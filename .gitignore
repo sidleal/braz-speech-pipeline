@@ -1,0 +1,7 @@
+*.log
+/logs
+/data
+token.json
+
+__pycache__
+*.pyc

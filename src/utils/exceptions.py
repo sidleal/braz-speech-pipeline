@@ -1,0 +1,2 @@
+class EmptyAudio(Exception):
+    pass
