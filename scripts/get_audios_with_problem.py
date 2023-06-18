@@ -1,5 +1,6 @@
 import pymysql
 import pandas as pd
+import glob
 from pathlib import Path
 from config import CONFIG
 
@@ -60,20 +61,27 @@ def analise_audios():
     db_conn = mysql_connect()
     
     audios = get_all_audios(db_conn)
-    audio_with_problems = []
+    audio_with_problems = pd.DataFrame()
     
     if not audios.empty:
         for idx, audio in audios.iterrows():
             dataset = audio["name"].split("_")[1]
-            audio_path = Path("data/nurc_sp") / dataset / audio["name"] / "audios"
-            
-            segments_on_folder = Path(audio_path).glob("*.wav")
-            num_segments_on_folder = sum(1 for _ in segments_on_folder)
+
+            audio_path = Path("../nurc_sp/") / dataset / audio["name"] / "audios"
+            segments_on_folder = set([f"data/nurc_sp/{dataset}/{audio['name']}/audios/" + file.name.replace("..", "data") for file in audio_path.glob("*")])  # Convert to a set
             
             segments_on_db = get_segments_by_audio_id(db_conn, audio["id"])
+            segments_on_db_set = set(segments_on_db["file_path"])  # Convert to a set
             
-            if num_segments_on_folder != segments_on_db.shape[0]:
-                print(f"Audio {audio['name']} need to be fixed! We have ")
+            
+            segments_not_in_db = segments_on_folder - segments_on_db_set  # Set difference
+            
+            if len(segments_on_folder) != len(segments_on_db_set):
+                print(f"Audio {audio['name']} needs to be fixed! There are {len(segments_on_folder)} on folder and {len(segments_on_db_set)} on DB.")
+                if len(segments_on_folder) > len (segments_on_db_set):
+                    print(segments_not_in_db)
+                    
+    audio_with_problems.to_csv("problems.csv")
 
 if __name__ == "__main__":
     analise_audios()
