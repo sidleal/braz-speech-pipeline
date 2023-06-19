@@ -25,8 +25,8 @@ logger.setLevel(level=DEBUG)
 
 # Load whisper model
 device = "cuda" if torch.cuda.is_available() else "cpu"
-batch_size = 64
-compute_type = "float16" 
+batch_size = 8
+compute_type = "float16"
 
 WHISPER_MODEL = "large-v2"
 logger.info(f"Loading whisper model {WHISPER_MODEL}")
