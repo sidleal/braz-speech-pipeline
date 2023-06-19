@@ -136,6 +136,7 @@ for folder_name, folder in folders_to_explore.items():
                 audio_segment = AudioSegment.from_wav(TEMP_WAV_AUDIO_PATH)[int(start_time * 1000):int(end_time * 1000)]
                 audio_segment.export(audio_path, format="wav")
 
+                audio_path = audio_path.replace("/processed/", f"/{dataset}/")
                 data['audio_name'].append(file_name)
                 data['audio_segment_path'].append(audio_path)
                 data['start'].append(start_time)
