@@ -120,6 +120,15 @@ for folder_name, folder in folders_to_explore.items():
         model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
         result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
 
+        logger.debug("Diarization audio with PyAnnote")
+        # 3. Assign speaker labels
+        diarize_model = whisperx.DiarizationPipeline(use_auth_token=PYANNOTE_AUTH_TOKEN, device=device)
+
+        # add min/max number of speakers if known
+        # diarize_segments = diarize_model(audio_file)
+        diarize_segments = diarize_model(TEMP_WAV_AUDIO_PATH, min_speakers=1, max_speakers=4)
+
+        result = whisperx.assign_word_speakers(diarize_segments, result)
         audio_duration = 0
         for i, segment in enumerate(result["segments"]):
             try:
