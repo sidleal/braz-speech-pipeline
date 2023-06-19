@@ -60,8 +60,6 @@ folders_to_explore = {
 
 
 TEMP_WAV_AUDIO_PATH = TEMP_DATA_PATH / "temp_audio.wav"
-# dataset = 'data/nurc_sp'
-# CORPUS_ID = 2 # 1: MUPE, 2: NURC-SP
 
 ssh_tunnel: SSHTunnelForwarder = db.open_ssh_tunnel()
 db_connection = db.mysql_connect(ssh_tunnel)
@@ -76,12 +74,13 @@ for folder_name, folder in folders_to_explore.items():
 
     for item in tqdm(files_in_folder):
         data = {
-            'audio_name': [], 
-            'start': [], 
-            'end': [], 
-            'whisper_transcription': [], 
-            'audio_segment_path': [], 
-            'transcription_path': [] 
+            'audio_name': [],
+            'start': [],
+            'end': [],
+            'whisper_transcription': [],
+            'audio_segment_path': [],
+            'transcription_path': [],
+            'speaker_id': []
         }
 
         file_name = os.path.splitext(item['name'])[0]
@@ -113,10 +112,11 @@ for folder_name, folder in folders_to_explore.items():
 
         logger.debug(f"File loaded and saved locally to {TEMP_WAV_AUDIO_PATH}")
 
-        logger.debug("Starting to diarize audio")
+        logger.debug("Transcribing audio")
         audio = whisperx.load_audio(TEMP_WAV_AUDIO_PATH)
         result = whisperx_model.transcribe(audio, batch_size=batch_size)
 
+        logger.debug("Aligning audio")
         model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
         result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
 
@@ -125,6 +125,7 @@ for folder_name, folder in folders_to_explore.items():
             try:
                 start_time = segment["start"]
                 end_time = segment["end"]
+                speaker_id = segment["speaker"].split("_")[-1] if "speaker" in segment else None
 
                 transc_path = os.path.join(output_transcription_folder, f'{i:04}_{file_name}_{start_time}_{end_time}.txt')
                 transcription = segment['text']
@@ -141,6 +142,7 @@ for folder_name, folder in folders_to_explore.items():
                 data['end'].append(end_time)
                 data['whisper_transcription'].append(transcription)
                 data['transcription_path'].append(transc_path)
+                data['speaker_id'].append(speaker_id)
 
 
                 audio_duration = end_time
@@ -148,12 +150,12 @@ for folder_name, folder in folders_to_explore.items():
                 frames = int(duration * 16000)
                 duration = int(duration)
 
-                db.add_audio_segment(db_connection, audio_path, transcription, audio_id, i, frames, duration, start_time, end_time)
+                db.add_audio_segment(db_connection, audio_path, transcription, audio_id, i, frames, duration, start_time, end_time, speaker_id)
 
             except Exception as e:
                 logger.error(f"Erro ao processar segmento {file_name}: {e}")
                 continue
-        
+
         db.update_audio_duration(db_connection, audio_id, audio_duration)
         # Copy the files/directory recursively
         scp.put(audio_path, '~/BrazSpeechData/static/Dataset/data/nurc_sp/DID')
