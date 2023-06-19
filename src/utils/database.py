@@ -86,19 +86,19 @@ VALUES
     audio_id = run_query(db_conn, query)
     return audio_id #type: ignore
 
-def add_audio_segment(db_conn, segment_path, text_asr, audio_id, segment_num, frames, duration, start_time, end_time):
+def add_audio_segment(db_conn, segment_path, text_asr, audio_id, segment_num, frames, duration, start_time, end_time, speaker_id):
     query = f"""
 INSERT INTO Dataset 
     (
         file_path, file_with_user, data_gold, task, 
         text_asr, audio_id, segment_num,
-        audio_lenght, duration, start_time, end_time
+        audio_lenght, duration, start_time, end_time, speaker_id
     )
 VALUES 
     (
         '{segment_path}', 0, 0, 1, 
         '{text_asr}', {audio_id}, {segment_num},
-        {frames}, {duration}, {start_time}, {end_time}
+        {frames}, {duration}, {start_time}, {end_time}, {speaker_id}
     )
 """
     return run_query(db_conn, query)     
