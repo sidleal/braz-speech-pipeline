@@ -4,19 +4,17 @@ from scipy.io import wavfile
 from pyannote.audio import Pipeline
 from typing import Optional
 import os
-from dotenv import load_dotenv
 
 from src.config import CONFIG
 
-# Access the environment variable
-AUTH_TOKEN = CONFIG.pyannote.auth_token
-
-assert AUTH_TOKEN is not None, "Please set your HuggingFace auth token"
-
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
-                                    use_auth_token=AUTH_TOKEN)
 
 def diarize_audio(audio_path, out_dir, num_speakers=None, audio_name: Optional[str] = None, keep_turn=False, min_sec=0.5, max_sec=None):
+
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization",
+        use_auth_token=CONFIG.pyannote.auth_token
+    )
+
     sr, audio = wavfile.read(audio_path)
     diarization = pipeline(audio_path, num_speakers=num_speakers)
     
