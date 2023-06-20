@@ -2,12 +2,12 @@
 name = "braz-speech-pipeline"
 version = "0.1.0"
 description = ""
-authors = ["molinavinicius <vinymg98@gmail.com>"]
+authors = ["Vinicius Molina"]
 readme = "README.md"
 packages = [{include = "braz_speech_pipeline"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 google-auth = "^2.20.0"
 google-auth-oauthlib = "^1.0.0"
 google-auth-httplib2 = "^0.1.0"
@@ -20,7 +20,11 @@ pandas = "^2.0.2"
 pydub = "^0.25.1"
 sshtunnel = "^0.4.0"
 pymysql = "^1.0.3"
-
+typer = "^0.9.0"
+python-dotenv = "^1.0.0"
+torch = "2.0.0+cu118"
+torchvision = "0.15.1+cu118"
+torchaudio = "2.0.1"
 
 [build-system]
 requires = ["poetry-core"]

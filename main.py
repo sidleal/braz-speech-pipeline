@@ -5,7 +5,9 @@ app = typer.Typer(
     help="Run data pipelines for diarization, transcription, metadata extraction for feeding the BrazSpeechData platform.",
 )
 
-
+@app.command(name="hello")
+def hello():
+    print("Hello, world!")
 @app.command(name="nurc")
 def nurc():
     from src.pipelines.diarize_and_transcribe_nurc import diarize_and_transcribe_nurc

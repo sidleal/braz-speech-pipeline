@@ -15,7 +15,7 @@ from sshtunnel import SSHTunnelForwarder
 
 from src.steps import transcribe_audio, diarize_audio, AudioLoaderGoogleDrive
 from src.utils import google_drive, logger as lg, database as db
-from src.utils.scp_transfer import ssh, scp
+from src.utils.scp_transfer import FileTransfer
 from src.config import CONFIG
 
 locale.getpreferredencoding = lambda: "UTF-8"
@@ -90,6 +90,8 @@ def diarize_and_transcribe_nurc():
             # If there is already an audio on the database (shape > 0), we shouldn't process it again.
             if audios_with_name.shape[0] > 0:
                 continue
+            
+            logger.info(f"Processing audio {file_name}.")
 
             subdataset = folder_name
             audio_drive_id = item["id"]
@@ -161,8 +163,10 @@ def diarize_and_transcribe_nurc():
                     duration = int(duration)
 
                     db.add_audio_segment(db_connection, segment_file_path, transcription, audio_id, i, frames, duration, start_time, end_time, speaker_id)
-                    # Copy the files/directory recursively
-                    scp.put(segment_file_path, f'~/BrazSpeechData/static/Dataset/data/nurc_sp/{dataset}/{file_name}/audios/')
+                    
+                    # Copy the segment to NewHouse machine
+                    with FileTransfer() as ft:
+                        ft.put(segment_file_path, f'~/BrazSpeechData/static/Dataset/data/nurc_sp/{dataset}/{file_name}/audios/')
                     
                 except Exception as e:
                     logger.error(f"Erro ao processar segmento {file_name}: {e}")
@@ -176,10 +180,6 @@ def diarize_and_transcribe_nurc():
 
     db.mysql_disconnect(db_connection)
     db.close_ssh_tunnel(ssh_tunnel)
-
-    # Close the SCP and SSH clients
-    scp.close()
-    ssh.close()
     
 if __name__ == "__main__":
     diarize_and_transcribe_nurc()
