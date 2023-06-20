@@ -122,7 +122,7 @@ def diarize_and_transcribe_nurc():
 
             logger.debug("Diarization audio with PyAnnote")
             # 3. Assign speaker labels
-            diarize_model = whisperx.DiarizationPipeline(use_auth_token=PYANNOTE_AUTH_TOKEN, device=device)
+            diarize_model = whisperx.DiarizationPipeline(use_auth_token=CONFIG.pyannote.auth_token, device=device)
 
             # add min/max number of speakers if known
             # diarize_segments = diarize_model(audio_file)
