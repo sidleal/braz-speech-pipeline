@@ -91,9 +91,6 @@ def diarize_and_transcribe_nurc():
             if audios_with_name.shape[0] > 0:
                 continue
 
-            logger.info(f"Creating audio {file_name} on database")
-            audio_id = db.add_audio(db_connection, file_name, CORPUS_ID)
-
             subdataset = folder_name
             audio_drive_id = item["id"]
             audio_path = item["name"]
@@ -129,6 +126,9 @@ def diarize_and_transcribe_nurc():
             diarize_segments = diarize_model(TEMP_WAV_AUDIO_PATH, min_speakers=1, max_speakers=4)
 
             result = whisperx.assign_word_speakers(diarize_segments, result)
+            
+            logger.info(f"Creating audio {file_name} on database")
+            audio_id = db.add_audio(db_connection, file_name, CORPUS_ID)
             audio_duration = 0
             for i, segment in enumerate(result["segments"]):
                 try:
