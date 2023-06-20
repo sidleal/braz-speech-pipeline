@@ -83,21 +83,20 @@ def diarize_and_transcribe_nurc():
                 'speaker_id': []
             }
 
-            file_name = os.path.splitext(item['name'])[0]
-            file_name = file_name.replace("_sem_cabecalho", "").replace("_sem_cabecallho", "").replace("_sem_cabeçalho", "")
+            audio_name = os.path.splitext(item['name'])[0]
+            audio_name = audio_name.replace("_sem_cabecalho", "").replace("_sem_cabecallho", "").replace("_sem_cabeçalho", "")
             
-            audios_with_name = db.get_audios_by_name(db_connection, file_name)
+            audios_with_name = db.get_audios_by_name(db_connection, audio_name)
             # If there is already an audio on the database (shape > 0), we shouldn't process it again.
             if audios_with_name.shape[0] > 0:
                 continue
             
-            logger.info(f"Processing audio {file_name}.")
+            logger.info(f"Processing audio {audio_name}.")
 
-            subdataset = folder_name
             audio_drive_id = item["id"]
             audio_path = item["name"]
 
-            OUTPUT_PATH = PROCESSED_DATA_PATH / folder_name / file_name
+            OUTPUT_PATH = PROCESSED_DATA_PATH / folder_name / audio_name
             OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
             output_audio_folder = Path(OUTPUT_PATH / "audios")
             output_audio_folder.mkdir(parents=True, exist_ok=True)
@@ -129,27 +128,29 @@ def diarize_and_transcribe_nurc():
 
             result = whisperx.assign_word_speakers(diarize_segments, result)
             
-            logger.info(f"Creating audio {file_name} on database")
-            audio_id = db.add_audio(db_connection, file_name, CORPUS_ID)
+            logger.info(f"Creating audio {audio_name} on database")
+            audio_id = db.add_audio(db_connection, audio_name, CORPUS_ID)
             audio_duration = 0
-            for i, segment in enumerate(result["segments"]):
+            for i, segment in tqdm(enumerate(result["segments"])):
                 try:
                     start_time = segment["start"]
                     end_time = segment["end"]
                     speaker_id = segment["speaker"].split("_")[-1] if "speaker" in segment else None
 
-                    transc_path = os.path.join(output_transcription_folder, f'{i:04}_{file_name}_{start_time}_{end_time}.txt')
+                    transc_path = os.path.join(output_transcription_folder, f'{i:04}_{audio_name}_{start_time}_{end_time}.txt')
                     transcription = segment['text']
+                    transcription = transcription.replace("'", "\'")
                     with open(transc_path, "w", encoding="utf-8") as f:
                         f.write(transcription)
 
-                    segment_path = os.path.join(output_audio_folder, f'{i:04}_{file_name}_{start_time}_{end_time}.wav')
+                    segment_name = f'{i:04}_{audio_name}_{start_time}_{end_time}.wav'
+                    segment_path_on_local = os.path.join(output_audio_folder, segment_name)
                     audio_segment = AudioSegment.from_wav(TEMP_WAV_AUDIO_PATH)[int(start_time * 1000):int(end_time * 1000)]
-                    audio_segment.export(segment_path, format="wav")
+                    audio_segment.export(segment_path_on_local, format="wav")
 
-                    segment_file_path = segment_path.replace("/processed/", f"/{dataset}/")
-                    data['audio_name'].append(file_name)
-                    data['audio_segment_path'].append(segment_file_path)
+                    segment_file_path_on_server = segment_path_on_local.replace("/processed/", f"/{dataset}/")
+                    data['audio_name'].append(audio_name)
+                    data['audio_segment_path'].append(segment_file_path_on_server)
                     data['start'].append(start_time)
                     data['end'].append(end_time)
                     data['whisper_transcription'].append(transcription)
@@ -162,14 +163,18 @@ def diarize_and_transcribe_nurc():
                     frames = int(duration * 16000)
                     duration = int(duration)
 
-                    db.add_audio_segment(db_connection, segment_file_path, transcription, audio_id, i, frames, duration, start_time, end_time, speaker_id)
+                    db.add_audio_segment(db_connection, segment_file_path_on_server, transcription, audio_id, i, frames, duration, start_time, end_time, speaker_id)
                     
                     # Copy the segment to NewHouse machine
                     with FileTransfer() as ft:
-                        ft.put(segment_file_path, f'~/BrazSpeechData/static/Dataset/data/nurc_sp/{dataset}/{file_name}/audios/')
+
+                        ft.put(
+                            source=segment_path_on_local, 
+                            target=f"{CONFIG.remote.dataset_path}/{segment_file_path_on_server}"
+                        )
                     
                 except Exception as e:
-                    logger.error(f"Erro ao processar segmento {file_name}: {e}")
+                    logger.error(f"Erro ao processar segmento {segment_name}: {e}", stack_info=True)
                     continue
 
             db.update_audio_duration(db_connection, audio_id, audio_duration)

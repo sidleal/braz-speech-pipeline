@@ -3,7 +3,7 @@ from scp import SCPClient
 import os
 
 from src.config import CONFIG
-
+from src.utils.logger import logger
 
 class FileTransfer:
     def __enter__(self):
@@ -26,14 +26,37 @@ class FileTransfer:
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(server, port, user, password)
         return client
+    
 
-    def put(self, source: str, target: str, target_is_folder: bool = True, **kwargs):
-        
-        if target_is_folder:
-            filename = os.path.basename(source)
-            destination = os.path.join(target, filename)
-            self.scp.put(source, destination, **kwargs)
+    def mkdir(self, folder_path: str, recursive: bool = True):
+        if recursive:
+            # Split the folder path into individual folder names
+            folders = folder_path.split('/')
+
+            # Remove any empty folder names resulting from leading/trailing slashes
+            folders = [folder for folder in folders if folder]
+
+            # Create each folder recursively, if it does not exist
+            for i in range(1, len(folders) + 1):
+                partial_path = '/'.join(folders[:i])
+                
+                if partial_path in CONFIG.remote.dataset_path or partial_path == CONFIG.remote.dataset_path:
+                    continue
+                
+                command = f'mkdir {partial_path} 2> /dev/null || true'  # Ignore error if the folder already exists
+                self.ssh.exec_command(command)
         else:
-            self.scp.put(source, target, **kwargs)
+            command = f'mkdir {folder_path} 2> /dev/null || true'  # Ignore error if the folder already exists
+            self.ssh.exec_command(command)
+            
+    def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):        
+        if target_is_folder:
+            self.mkdir(target)
+            filename = os.path.basename(source)
+            target = os.path.join(target, filename)
+        else:
+            self.mkdir(os.path.dirname(target))
+        
+        self.scp.put(source, target, **kwargs)
 
         

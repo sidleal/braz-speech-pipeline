@@ -1,4 +1,6 @@
 from pydantic import BaseModel, BaseSettings
+from typing import Optional
+
 
 class Pyannote(BaseModel):
     auth_token: str
@@ -17,11 +19,16 @@ class MySQL(BaseModel):
     username: str
     password: str
     database: str
+    
+class RemoteMachine(BaseModel):
+    dataset_path: str = "~/BrazSpeechData/static/Dataset"
+
 
 class Config(BaseSettings):
     pyannote: Pyannote
     sshtunnel: SSHTunnel
     mysql: MySQL
+    remote: RemoteMachine = RemoteMachine()
     
     class Config:
         env_file = ".env", "../.env", "../../.env"
