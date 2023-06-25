@@ -1,6 +1,7 @@
 import os
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
+from typing import Literal
 
 
 def get_credentials():
@@ -18,10 +19,10 @@ def get_credentials():
 def setup_service():
     return build('drive', 'v3', credentials=get_credentials())   
 
-def get_files_from_folder(folder_id):
+def get_files_from_folder(folder_id, format: Literal[".wav", ".mp4"] = ".wav"):
     service = setup_service()
     query = f"'{folder_id}' in parents and trashed = false"
-    wav_audios = []
+    return_files = []
 
     page_token = None
     while True:
@@ -30,15 +31,15 @@ def get_files_from_folder(folder_id):
 
         for item in items:
             if item['mimeType'] == 'application/vnd.google-apps.folder':
-                wav_audios.extend(get_files_from_folder(item['id']))
+                return_files.extend(get_files_from_folder(item['id'], format))
             else:
                 file_name = item['name']
                 file_extension = os.path.splitext(file_name)[1]
-                if file_extension == '.wav':
-                    wav_audios.append(item)
+                if file_extension == format:
+                    return_files.append(item)
 
         page_token = results.get('nextPageToken')
         if not page_token:
             break
     
-    return wav_audios
+    return return_files

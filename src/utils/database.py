@@ -7,114 +7,113 @@ import os
 
 from src.config import CONFIG
 
-def open_ssh_tunnel(verbose=False):
-    """Open an SSH tunnel and connect using a username and password.
-    
-    :param verbose: Set to True to show logging
-    :return tunnel: Global SSH tunnel connection
-    """
-    
-    if verbose:
-        sshtunnel.DEFAULT_LOGLEVEL = logging.DEBUG
+class Database:
+    def __enter__(self, with_ssh: bool = True):
+        self.ssh = self._open_ssh_tunnel() if with_ssh else None
+        self.sql_connection = self._mysql_connect()
 
-    tunnel = SSHTunnelForwarder(
-        (CONFIG.sshtunnel.host, CONFIG.sshtunnel.port),
-        ssh_username = CONFIG.sshtunnel.username,
-        ssh_password = CONFIG.sshtunnel.password,
-        remote_bind_address = ('127.0.0.1', 3306)
-    )
-    
-    tunnel.start()
+        return self
 
-    return tunnel
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.sql_connection.close()
+        if self.ssh is not None:
+            self.ssh.close()
 
-def mysql_connect(ssh_tunnel):
-    """Connect to a MySQL server using the SSH tunnel connection
-    
-    :return connection: Global MySQL database connection
-    """
+    def _open_ssh_tunnel(self, verbose=False):
+        """Open an SSH tunnel and connect using a username and password.
+        
+        :param verbose: Set to True to show logging
+        :return tunnel: Global SSH tunnel connection
+        """
+        
+        if verbose:
+            sshtunnel.DEFAULT_LOGLEVEL = logging.DEBUG
 
-    connection = pymysql.connect(
-        host=CONFIG.mysql.host,
-        user=CONFIG.mysql.username,
-        passwd=CONFIG.mysql.password,
-        db=CONFIG.mysql.database,
-        port=ssh_tunnel.local_bind_port
-    )
+        tunnel = SSHTunnelForwarder(
+            (CONFIG.sshtunnel.host, CONFIG.sshtunnel.port),
+            ssh_username = CONFIG.sshtunnel.username,
+            ssh_password = CONFIG.sshtunnel.password,
+            remote_bind_address = ('127.0.0.1', 3306)
+        )
+        
+        tunnel.start()
 
-    return connection
+        return tunnel
 
-def run_query(connection, sql):
-    """Runs a given SQL query via the global database connection.
-    
-    :param sql: MySQL query
-    :return: Pandas DataFrame containing results for SELECT queries, 
-             last inserted ID for INSERT queries, None for other queries
-    """
-    if sql.strip().lower().startswith('select'):
-        return pd.read_sql_query(sql, connection)
-    else:
-        with connection.cursor() as cursor:
-            cursor.execute(sql)
-            connection.commit()
-            if sql.strip().lower().startswith('insert'):
-                return cursor.lastrowid
+    def _mysql_connect(self):
+        """Connect to a MySQL server using the SSH tunnel connection
+        
+        :return connection: Global MySQL database connection
+        """
+        connection = pymysql.connect(
+            host=CONFIG.mysql.host,
+            user=CONFIG.mysql.username,
+            passwd=CONFIG.mysql.password,
+            db=CONFIG.mysql.database,
+            port=self.ssh.local_bind_port if self.ssh is not None else CONFIG.mysql.port
+        )
+
+        return connection
+
+    def _run_query(self, sql):
+        """Runs a given SQL query via the global database connection.
+        
+        :param sql: MySQL query
+        :return: Pandas DataFrame containing results for SELECT queries, 
+                last inserted ID for INSERT queries, None for other queries
+        """
+        if sql.strip().lower().startswith('select'):
+            return pd.read_sql_query(sql, self.sql_connection)
+        else:
+            with self.sql_connection.cursor() as cursor:
+                cursor.execute(sql)
+                self.sql_connection.commit()
+                if sql.strip().lower().startswith('insert'):
+                    return cursor.lastrowid
             
-def mysql_disconnect(connection):
-    """Closes the MySQL database connection.
+    def add_audio(self, audio_name, corpus_id) -> int:
+        query = f"""
+    INSERT INTO Audio
+        (
+            name, corpus_id
+        )
+    VALUES
+        (
+            '{audio_name}', {corpus_id}
+        )
     """
-    
-    connection.close()
+        audio_id = self._run_query(query)
+        return audio_id #type: ignore
 
-def close_ssh_tunnel(tunnel):
-    """Closes the SSH tunnel connection.
+    def add_audio_segment(self, segment_path, text_asr, audio_id, segment_num, frames, duration, start_time, end_time, speaker_id):
+        query = f"""
+    INSERT INTO Dataset 
+        (
+            file_path, file_with_user, data_gold, task, 
+            text_asr, audio_id, segment_num,
+            audio_lenght, duration, start_time, end_time, speaker_id
+        )
+    VALUES 
+        (
+            '{segment_path}', 0, 0, 1, 
+            '{text_asr}', {audio_id}, {segment_num},
+            {frames}, {duration}, {start_time}, {end_time}, {speaker_id}
+        )
     """
-    
-    tunnel.close
+        return self._run_query(query)
 
-def add_audio(db_conn, audio_name, corpus_id) -> int:
-    query = f"""
-INSERT INTO Audio
-    (
-        name, corpus_id
-    )
-VALUES
-    (
-        '{audio_name}', {corpus_id}
-    )
-"""
-    audio_id = run_query(db_conn, query)
-    return audio_id #type: ignore
-
-def add_audio_segment(db_conn, segment_path, text_asr, audio_id, segment_num, frames, duration, start_time, end_time, speaker_id):
-    query = f"""
-INSERT INTO Dataset 
-    (
-        file_path, file_with_user, data_gold, task, 
-        text_asr, audio_id, segment_num,
-        audio_lenght, duration, start_time, end_time, speaker_id
-    )
-VALUES 
-    (
-        '{segment_path}', 0, 0, 1, 
-        '{text_asr}', {audio_id}, {segment_num},
-        {frames}, {duration}, {start_time}, {end_time}, {speaker_id}
-    )
-"""
-    return run_query(db_conn, query)     
-
-def update_audio_duration(db_conn, audio_id, audio_duration):
-    query = f"""
-    UPDATE Audio
-    SET duration = {audio_duration}
-    WHERE id = {audio_id}
-    """
-    return run_query(db_conn, query)
-    
-def get_audios_by_name(db_conn, audio_name):
-    query = f"""
-    SELECT *
-    FROM Audio
-    WHERE name LIKE '{audio_name}%'
-    """
-    return run_query(db_conn, query)
+    def update_audio_duration(self, audio_id, audio_duration):
+        query = f"""
+        UPDATE Audio
+        SET duration = {audio_duration}
+        WHERE id = {audio_id}
+        """
+        return self._run_query(query)
+        
+    def get_audios_by_name(self, audio_name):
+        query = f"""
+        SELECT *
+        FROM Audio
+        WHERE name LIKE '{audio_name}%'
+        """
+        return self._run_query(query)
