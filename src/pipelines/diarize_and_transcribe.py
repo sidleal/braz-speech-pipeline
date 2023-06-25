@@ -10,16 +10,16 @@ import pandas as pd
 from pydub import AudioSegment
 import whisperx
 from tqdm import tqdm
-from sshtunnel import SSHTunnelForwarder
+from typing import Literal
 
-
-from src.steps import transcribe_audio, diarize_audio, AudioLoaderGoogleDrive
-from src.utils import google_drive, logger as lg, database as db
+from src.steps import AudioLoaderGoogleDrive
+from src.utils import google_drive, logger as lg
 from src.utils.database import Database
 from src.utils.scp_transfer import FileTransfer
 from src.config import CONFIG
 
 locale.getpreferredencoding = lambda: "UTF-8"
+
 
 logger = lg.logger
 logger.setLevel(level=DEBUG)
@@ -38,37 +38,23 @@ TEMP_WAV_AUDIO_PATH = TEMP_DATA_PATH / "temp_audio.wav"
 
 for path in (TEMP_DATA_PATH, PROCESSED_DATA_PATH):
     path.mkdir(parents=True, exist_ok=True)
-    
-def diarize_and_transcribe_nurc():
-    dataset = 'nurc_sp'
-    CORPUS_ID = 2 # 1: MUPE, 2: NURC-SP
-    
-    logger.info(f"Loading whisper model {WHISPER_MODEL}")
-    whisperx_model = whisperx.load_model(WHISPER_MODEL, device, compute_type=compute_type, language = 'pt')
 
 
-    logger.info(f"Stablishing Google Drive connection")
-    google_drive_service = google_drive.setup_service()
-
-    folders_to_explore = {
-        "EF": {
-            "folder_id": "1ndi8t_7shb3FB77ZTWd7xVW9KgLm6NLA",
-        },
-        "DID": {
-            "folder_id": "1npveVhN9h5fsWhJzVKDUD7uQv76MNZ4i",
-        },
-        "D2": {
-            "folder_id": "1njSedHukKrN8zJGM12eL-rt3aaOZpxdO",
-        },
-    }
-
+def diarize_and_transcribe(dataset, corpus_id, folders_to_explore, format: Literal[".wav", ".mp4"]):
     with Database() as db:
+        
+        logger.info(f"Loading whisper model {WHISPER_MODEL}")
+        whisperx_model = whisperx.load_model(WHISPER_MODEL, device, compute_type=compute_type, language = 'pt')
+
+        logger.info(f"Stablishing Google Drive connection")
+        google_drive_service = google_drive.setup_service()
+
         for folder_name, folder in folders_to_explore.items():
 
             logger.info(f"Exploring folder {folder_name}")
             OUTPUT_PATH = PROCESSED_DATA_PATH / folder_name
 
-            files_in_folder  = google_drive.get_files_from_folder(folder["folder_id"])
+            files_in_folder  = google_drive.get_files_from_folder(folder["folder_id"], format)
             logger.info(f"On the folder {folder_name}, we have {len(files_in_folder)} audios.")
 
             for item in tqdm(files_in_folder):
@@ -82,10 +68,10 @@ def diarize_and_transcribe_nurc():
                     'speaker_id': []
                 }
 
-                audio_name = os.path.splitext(item['name'])[0]
-                audio_name = audio_name.replace("_sem_cabecalho", "").replace("_sem_cabecallho", "").replace("_sem_cabeçalho", "")
+                audio_name = os.path.splitext(item["name"])[0]
+                video_code = "_".join(audio_name.split("_")[:3])
                 
-                audios_with_name = db.get_audios_by_name(audio_name)
+                audios_with_name = db.get_audios_by_name(video_code)
                 # If there is already an audio on the database (shape > 0), we shouldn't process it again.
                 if audios_with_name.shape[0] > 0:
                     continue
@@ -93,7 +79,6 @@ def diarize_and_transcribe_nurc():
                 logger.info(f"Processing audio {audio_name}.")
 
                 audio_drive_id = item["id"]
-                audio_path = item["name"]
 
                 OUTPUT_PATH = PROCESSED_DATA_PATH / folder_name / audio_name
                 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -104,7 +89,7 @@ def diarize_and_transcribe_nurc():
                 output_transcription_folder.mkdir(parents=True, exist_ok=True)
 
                 logger.debug("Loading file from Google Drive")
-                audio = AudioLoaderGoogleDrive(google_drive_service).load_and_downsample(audio_drive_id)
+                audio = AudioLoaderGoogleDrive(google_drive_service).load_and_downsample(audio_drive_id, format)
                 sf.write(TEMP_WAV_AUDIO_PATH, audio, 16000)
 
                 logger.debug(f"File loaded and saved locally to {TEMP_WAV_AUDIO_PATH}")
@@ -128,7 +113,7 @@ def diarize_and_transcribe_nurc():
                 result = whisperx.assign_word_speakers(diarize_segments, result)
                 
                 logger.info(f"Creating audio {audio_name} on database")
-                audio_id = db.add_audio(audio_name, CORPUS_ID)
+                audio_id = db.add_audio(audio_name, corpus_id)
                 audio_duration = 0
                 for i, segment in tqdm(enumerate(result["segments"])):
                     try:
@@ -181,6 +166,3 @@ def diarize_and_transcribe_nurc():
                 
                 df = pd.DataFrame(data)
                 df.to_csv(OUTPUT_PATH / "summary.csv", index=False, encoding='utf-8', sep='|', mode='w')
-        
-if __name__ == "__main__":
-    diarize_and_transcribe_nurc()
