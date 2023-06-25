@@ -63,7 +63,7 @@ class Database:
                 last inserted ID for INSERT queries, None for other queries
         """
         if sql.strip().lower().startswith('select'):
-            return pd.read_sql_query(sql, self.sql_connection)
+            return pd.read_sql_query(sql, self.sql_connection) #type: ignore
         else:
             with self.sql_connection.cursor() as cursor:
                 cursor.execute(sql)

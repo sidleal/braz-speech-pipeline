@@ -48,8 +48,7 @@ def diarize_and_transcribe(data_path: Path, corpus_id, folders_to_explore, forma
                 audio_name = audio_name.replace("_sem_cabecalho", "").replace("_sem_cabecallho", "").replace("_sem_cabeçalho", "")
 
                 audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
-                # If there is already an audio on the database (shape > 0), we shouldn't process it again.
-                if audios_with_name.shape[0] > 0:
+                if not audios_with_name.empty: #type: ignore
                     continue
                 
                 OUTPUT_PATH = data_path / folder_name / audio_name
