@@ -47,7 +47,7 @@ class AudioToTextSegmentsConverter():
 
                 logger.debug(f"File loaded and saved locally to {temp_audio_file}")
 
-                segments = self._generate_text_segments(temp_audio_file)
+                segments = self._generate_text_segments(temp_audio_file.file)
                 
                 logger.info(f"Creating audio {audio_name} on database")
                 audio_id = db.add_audio(audio_name, corpus_id)
