@@ -45,9 +45,9 @@ class AudioToTextSegmentsConverter():
                 #TODO: make sample rate as parameter
                 sf.write(temp_audio_file, audio, 16000)
 
-                logger.debug(f"File loaded and saved locally to {temp_audio_file}")
+                logger.debug(f"File loaded and saved locally to {temp_audio_file.name}")
 
-                segments = self._generate_text_segments(temp_audio_file.file)
+                segments = self._generate_text_segments(temp_audio_file.name)
                 
                 logger.info(f"Creating audio {audio_name} on database")
                 audio_id = db.add_audio(audio_name, corpus_id)
@@ -80,7 +80,7 @@ class AudioToTextSegmentsConverter():
         
         return result["segments"]
 
-    def _save_segments(self, audio_id, audio_name, segments: List[SegmentWithSpeaker], data: dict[str, list[Any]], db: Database, temp_audio_file):
+    def _save_segments(self, audio_id, audio_name, segments: List[SegmentWithSpeaker], data: "dict[str, list[Any]]", db: Database, temp_audio_file):
         output_audio_folder = Path(self.OUTPUT_PATH / "audios")
         output_transcription_folder = Path(self.OUTPUT_PATH / "transcriptions")
         
@@ -127,7 +127,7 @@ class AudioToTextSegmentsConverter():
 
                     ft.put(
                         source=segment_path_on_local, 
-                        target=f"{CONFIG.remote.dataset_path}/{segment_path_on_local}"
+                        target=os.path.join(CONFIG.remote.dataset_path, segment_path_on_local)
                     )
                 
             except Exception as e:

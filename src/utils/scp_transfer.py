@@ -43,10 +43,10 @@ class FileTransfer:
                 if partial_path in CONFIG.remote.dataset_path or partial_path == CONFIG.remote.dataset_path:
                     continue
                 
-                command = f'mkdir {partial_path} 2> /dev/null || true'  # Ignore error if the folder already exists
+                command = f"mkdir '{partial_path}' 2> /dev/null || true"  # Ignore error if the folder already exists
                 self.ssh.exec_command(command)
         else:
-            command = f'mkdir {folder_path} 2> /dev/null || true'  # Ignore error if the folder already exists
+            command = f"mkdir '{folder_path}' 2> /dev/null || true"  # Ignore error if the folder already exists
             self.ssh.exec_command(command)
             
     def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):        
