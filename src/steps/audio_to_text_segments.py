@@ -174,6 +174,9 @@ class AudioToTextSegmentsConverter:
                     speaker_id,
                 )
 
+                logger.debug(
+                    f"Transfering {segment_name} to target machine using the path: {os.path.join(CONFIG.remote.dataset_path, segment_path_on_local)}, using the source path: {segment_path_on_local}"
+                )
                 # Copy the segment to NewHouse machine
                 with FileTransfer() as ft:
                     ft.put(
