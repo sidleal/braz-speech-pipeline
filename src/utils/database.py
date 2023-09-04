@@ -7,6 +7,7 @@ import os
 
 from src.config import CONFIG
 
+
 class Database:
     def __enter__(self, with_ssh: bool = True):
         self.ssh = self._open_ssh_tunnel() if with_ssh else None
@@ -21,28 +22,28 @@ class Database:
 
     def _open_ssh_tunnel(self, verbose=False):
         """Open an SSH tunnel and connect using a username and password.
-        
+
         :param verbose: Set to True to show logging
         :return tunnel: Global SSH tunnel connection
         """
-        
+
         if verbose:
             sshtunnel.DEFAULT_LOGLEVEL = logging.DEBUG
 
         tunnel = SSHTunnelForwarder(
             (CONFIG.sshtunnel.host, CONFIG.sshtunnel.port),
-            ssh_username = CONFIG.sshtunnel.username,
-            ssh_password = CONFIG.sshtunnel.password,
-            remote_bind_address = ('127.0.0.1', 3306)
+            ssh_username=CONFIG.sshtunnel.username,
+            ssh_password=CONFIG.sshtunnel.password,
+            remote_bind_address=("127.0.0.1", 3306),
         )
-        
+
         tunnel.start()
 
         return tunnel
 
     def _mysql_connect(self):
         """Connect to a MySQL server using the SSH tunnel connection
-        
+
         :return connection: Global MySQL database connection
         """
         connection = pymysql.connect(
@@ -50,42 +51,55 @@ class Database:
             user=CONFIG.mysql.username,
             passwd=CONFIG.mysql.password,
             db=CONFIG.mysql.database,
-            port=self.ssh.local_bind_port if self.ssh is not None else CONFIG.mysql.port
+            port=self.ssh.local_bind_port
+            if self.ssh is not None
+            else CONFIG.mysql.port,
         )
 
         return connection
 
     def _run_query(self, sql):
         """Runs a given SQL query via the global database connection.
-        
+
         :param sql: MySQL query
-        :return: Pandas DataFrame containing results for SELECT queries, 
+        :return: Pandas DataFrame containing results for SELECT queries,
                 last inserted ID for INSERT queries, None for other queries
         """
-        if sql.strip().lower().startswith('select'):
-            return pd.read_sql_query(sql, self.sql_connection) #type: ignore
+        if sql.strip().lower().startswith("select"):
+            return pd.read_sql_query(sql, self.sql_connection)  # type: ignore
         else:
             with self.sql_connection.cursor() as cursor:
                 cursor.execute(sql)
                 self.sql_connection.commit()
-                if sql.strip().lower().startswith('insert'):
+                if sql.strip().lower().startswith("insert"):
                     return cursor.lastrowid
-            
-    def add_audio(self, audio_name, corpus_id) -> int:
+
+    def add_audio(self, audio_name: str, corpus_id: int, duration: float) -> int:
         query = f"""
     INSERT INTO Audio
         (
-            name, corpus_id
+            name, corpus_id, duration
         )
     VALUES
         (
-            '{audio_name}', {corpus_id}
+            '{audio_name}', {corpus_id}, {duration}
         )
     """
         audio_id = self._run_query(query)
-        return audio_id #type: ignore
+        return audio_id  # type: ignore
 
-    def add_audio_segment(self, segment_path, text_asr, audio_id, segment_num, frames, duration, start_time, end_time, speaker_id):
+    def add_audio_segment(
+        self,
+        segment_path,
+        text_asr,
+        audio_id,
+        segment_num,
+        frames,
+        duration,
+        start_time,
+        end_time,
+        speaker_id,
+    ):
         query = f"""
     INSERT INTO Dataset 
         (
@@ -109,7 +123,7 @@ class Database:
         WHERE id = {audio_id}
         """
         return self._run_query(query)
-        
+
     def get_audios_by_name(self, audio_name):
         query = f"""
         SELECT *
