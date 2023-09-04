@@ -42,6 +42,14 @@ def nurc():
     
     diarize_and_transcribe(DATA_PATH, CORPUS_ID, folders_to_explore, format)
 
-
+@app.command(name="run")
+def run_folder(dataset_name:str, folder_id: str, corpus_id: int, format):
+    folders_to_explore = {
+        dataset_name: {
+            "folder_id": folder_id
+        }
+    }
+    diarize_and_transcribe(DATA_PATH, corpus_id, folders_to_explore, format)
+    
 if __name__ == "__main__":
     app()
