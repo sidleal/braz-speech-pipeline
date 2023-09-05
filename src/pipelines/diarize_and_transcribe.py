@@ -63,11 +63,9 @@ def diarize_and_transcribe(
                     .replace("_sem_cabeçalho", "")
                 )
 
-                audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
-                if not audios_with_name.empty:  # type: ignore
-                    continue
-
-                OUTPUT_PATH = data_path / folder_name / audio_name
+                # audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
+                # if not audios_with_name.empty:  # type: ignore
+                #     continue
 
                 logger.info(f"Processing audio {audio_name}.")
 
@@ -80,15 +78,17 @@ def diarize_and_transcribe(
                     mono_channel=CONFIG.mono_channel,
                 ).load_and_downsample(audio_drive_id, format)
 
-                converter = AudioToTextSegmentsConverter(
-                    output_path=OUTPUT_PATH, whisperx_model=whisperx_model
-                )
-
                 audio = Audio(
                     name=audio_name,
                     bytes=audio_ndarray,
                     sample_rate=CONFIG.sample_rate,
                     non_silent_interval=non_silent_indexes,
+                )
+                
+                OUTPUT_PATH = data_path / folder_name / audio.name_with_no_spaces
+
+                converter = AudioToTextSegmentsConverter(
+                    output_path=OUTPUT_PATH, whisperx_model=whisperx_model
                 )
 
                 converter.diarize_and_transcribe(audio, corpus_id)

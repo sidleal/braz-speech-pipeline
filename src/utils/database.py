@@ -6,6 +6,7 @@ from sshtunnel import SSHTunnelForwarder
 import os
 
 from src.config import CONFIG
+from src.models.segment import Segment
 
 
 class Database:
@@ -90,15 +91,7 @@ class Database:
 
     def add_audio_segment(
         self,
-        segment_path,
-        text_asr,
-        audio_id,
-        segment_num,
-        frames,
-        duration,
-        start_time,
-        end_time,
-        speaker_id,
+        segment: Segment
     ):
         query = f"""
     INSERT INTO Dataset 
@@ -109,9 +102,9 @@ class Database:
         )
     VALUES 
         (
-            '{segment_path}', 0, 0, 1, 
-            '{text_asr}', {audio_id}, {segment_num},
-            {frames}, {duration}, {start_time}, {end_time}, {speaker_id}
+            '{segment.segment_path}', 0, 0, 1, 
+            '{segment.text_asr}', {segment.audio_id}, {segment.segment_num},
+            {segment.frames}, {segment.duration}, {segment.start_time}, {segment.end_time}, {segment.speaker_id}
         )
     """
         return self._run_query(query)
