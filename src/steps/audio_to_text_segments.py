@@ -14,7 +14,7 @@ from src.utils.logger import logger
 from src.config import CONFIG
 from src.utils.scp_transfer import FileTransfer
 from src.models.audio import Audio
-
+from src.models.segment import Segment
 
 class SegmentWithSpeaker(SingleAlignedSegment):
     speaker: str
@@ -61,8 +61,8 @@ class AudioToTextSegmentsConverter:
 
                 segments = self._generate_text_segments(temp_audio_file.name)
 
-                logger.info(f"Creating audio {audio.name} on database")
-                audio_id = db.add_audio(audio.name, corpus_id, audio.duration)
+                # logger.info(f"Creating audio {audio.name_with_no_spaces} on database")
+                audio_id = db.add_audio(audio.name_with_no_spaces, corpus_id, audio.duration)
 
                 self._save_segments(
                     audio_id, audio, segments, data, db, temp_audio_file
@@ -121,7 +121,6 @@ class AudioToTextSegmentsConverter:
         for folder in (output_audio_folder, output_transcription_folder):
             folder.mkdir(parents=True, exist_ok=True)
 
-        audio_duration = 0
         segment_name = "###"
         for i, segment in enumerate(segments):
             try:
@@ -131,7 +130,7 @@ class AudioToTextSegmentsConverter:
                     segment["speaker"].split("_")[-1] if "speaker" in segment else None
                 )
 
-                segment_name = f"{i:04}_{audio.name}_{start_time}_{end_time}"
+                segment_name = f"{i:04}_{audio.name_with_no_spaces}_{start_time}_{end_time}"
 
                 transc_path = os.path.join(
                     output_transcription_folder, f"{segment_name}.txt"
@@ -149,7 +148,7 @@ class AudioToTextSegmentsConverter:
                 ]
                 audio_segment.export(segment_path_on_local, format="wav")
 
-                data["audio_name"].append(audio.name)
+                data["audio_name"].append(audio.name_with_no_spaces)
                 data["audio_segment_path"].append(segment_path_on_local)
                 data["start"].append(start_time)
                 data["end"].append(end_time)
@@ -157,26 +156,24 @@ class AudioToTextSegmentsConverter:
                 data["transcription_path"].append(transc_path)
                 data["speaker_id"].append(speaker_id)
 
-                audio_duration = end_time
                 duration = end_time - start_time
                 frames = int(duration * 16000)
                 duration = int(duration)
 
-                db.add_audio_segment(
-                    segment_path_on_local,
-                    transcription,
-                    audio_id,
-                    i,
-                    frames,
-                    duration,
-                    start_time,
-                    end_time,
-                    speaker_id,
+                audio_segment = Segment(
+                    segment_path=segment_path_on_local,
+                    text_asr=transcription,
+                    audio_id=audio_id,
+                    segment_num=i,
+                    frames=frames,
+                    duration=duration,
+                    start_time=start_time,
+                    end_time=end_time,
+                    speaker_id=speaker_id if speaker_id is not None else -1,
                 )
+                
+                db.add_audio_segment(audio_segment)
 
-                logger.debug(
-                    f"Transfering {segment_name} to target machine using the path: {os.path.join(CONFIG.remote.dataset_path, segment_path_on_local)}, using the source path: {segment_path_on_local}"
-                )
                 # Copy the segment to NewHouse machine
                 with FileTransfer() as ft:
                     ft.put(
@@ -191,11 +188,3 @@ class AudioToTextSegmentsConverter:
                     f"Erro ao processar segmento {segment_name}: {e}", stack_info=True
                 )
                 continue
-
-        assert (
-            audio_duration
-            + audio.start_offset_trimmed_audio
-            + audio.end_offset_trimmed_audio
-            == audio.duration
-        ), "Audio duration is not correct"
-        # db.update_audio_duration(audio_id, audio_duration)

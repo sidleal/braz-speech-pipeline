@@ -14,6 +14,10 @@ class Audio(BaseModel):
     # channels: int
     non_silent_interval: np.ndarray
 
+    @property 
+    def name_with_no_spaces(self) -> str:
+        return self.name.replace(" ", "_")
+    
     @property
     def duration(self) -> float:
         return len(self.bytes) / self.sample_rate
@@ -36,4 +40,7 @@ class Audio(BaseModel):
 
     @property
     def end_offset_trimmed_audio(self) -> float:
-        return self.non_silent_interval[1] / self.sample_rate
+        return self.duration - self.non_silent_interval[1] / self.sample_rate
+    
+    class Config:
+        arbitrary_types_allowed = True

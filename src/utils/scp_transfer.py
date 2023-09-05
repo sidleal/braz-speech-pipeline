@@ -53,8 +53,6 @@ class FileTransfer:
             self.ssh.exec_command(command)
 
     def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):
-        target = target.replace(" ", "\ ")
-        logger.debug("Creating folder if it does not exist")
         if target_is_folder:
             self.mkdir(target)
             filename = os.path.basename(source).replace(" ", "\ ")
@@ -63,10 +61,7 @@ class FileTransfer:
             self.mkdir(os.path.dirname(target))
 
         try:
-            logger.debug(f"Transfering file using source {source} and target {target}")
             self.scp.put(source, target, **kwargs)
         except Exception as e:
             logger.error(f"Error transfering file.")
             logger.debug(e)
-        else:
-            logger.debug(f"File transfered successfully.")
