@@ -124,13 +124,13 @@ class AudioToTextSegmentsConverter:
         segment_name = "###"
         for i, segment in enumerate(segments):
             try:
-                start_time = audio.start_offset_trimmed_audio + segment["start"]
-                end_time = audio.start_offset_trimmed_audio + segment["end"]
+                original_start_time = audio.start_offset_trimmed_audio + segment["start"]
+                original_end_time = audio.start_offset_trimmed_audio + segment["end"]
                 speaker_id = (
                     segment["speaker"].split("_")[-1] if "speaker" in segment else None
                 )
 
-                segment_name = f"{i:04}_{audio.name_with_no_spaces}_{start_time}_{end_time}"
+                segment_name = f"{i:04}_{audio.name_with_no_spaces}_{original_start_time}_{original_end_time}"
 
                 transc_path = os.path.join(
                     output_transcription_folder, f"{segment_name}.txt"
@@ -144,19 +144,19 @@ class AudioToTextSegmentsConverter:
                     output_audio_folder, f"{segment_name}.wav"
                 )
                 audio_segment = AudioSegment.from_wav(temp_audio_file)[
-                    int(start_time * 1000) : int(end_time * 1000)
+                    int(segment["start"] * 1000) : int(segment["end"] * 1000)
                 ]
                 audio_segment.export(segment_path_on_local, format="wav")
 
                 data["audio_name"].append(audio.name_with_no_spaces)
                 data["audio_segment_path"].append(segment_path_on_local)
-                data["start"].append(start_time)
-                data["end"].append(end_time)
+                data["start"].append(original_start_time)
+                data["end"].append(original_end_time)
                 data["whisper_transcription"].append(transcription)
                 data["transcription_path"].append(transc_path)
                 data["speaker_id"].append(speaker_id)
 
-                duration = end_time - start_time
+                duration = original_end_time - original_start_time
                 frames = int(duration * 16000)
                 duration = int(duration)
 
@@ -167,8 +167,8 @@ class AudioToTextSegmentsConverter:
                     segment_num=i,
                     frames=frames,
                     duration=duration,
-                    start_time=start_time,
-                    end_time=end_time,
+                    start_time=original_start_time,
+                    end_time=original_end_time,
                     speaker_id=speaker_id if speaker_id is not None else -1,
                 )
                 
