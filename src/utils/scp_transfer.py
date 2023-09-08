@@ -1,6 +1,7 @@
 import paramiko
 from scp import SCPClient
 import os
+import shlex
 
 from src.config import CONFIG
 from src.utils.logger import logger
@@ -46,22 +47,30 @@ class FileTransfer:
                 ):
                     continue
 
-                command = f"mkdir {partial_path} 2> /dev/null || true"  # Ignore error if the folder already exists
+                escaped_partial_path = shlex.quote(partial_path)
+
+                command = f"mkdir {escaped_partial_path} 2> /dev/null || true"  # Ignore error if the folder already exists
                 self.ssh.exec_command(command)
         else:
-            command = f"mkdir {folder_path} 2> /dev/null || true"  # Ignore error if the folder already exists
+            escaped_folder_path = shlex.quote(folder_path)
+            command = f"mkdir {escaped_folder_path} 2> /dev/null || true"  # Ignore error if the folder already exists
             self.ssh.exec_command(command)
 
     def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):
         if target_is_folder:
             self.mkdir(target)
-            filename = os.path.basename(source).replace(" ", "\ ")
+            filename = os.path.basename(source)
+            filename = shlex.quote(filename)  # Escape special characters here
             target = os.path.join(target, filename)
         else:
-            self.mkdir(os.path.dirname(target))
+            target_directory = os.path.dirname(target)
+            escaped_target_directory = shlex.quote(target_directory)
+            self.mkdir(escaped_target_directory)
 
+        source = shlex.quote(source)  # Escape source file path
+        target = shlex.quote(target)  # Escape target file path
         try:
             self.scp.put(source, target, **kwargs)
         except Exception as e:
-            logger.error(f"Error transfering file.")
+            logger.error(f"Error transferring file.")
             logger.debug(e)
