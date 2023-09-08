@@ -59,56 +59,59 @@ class Database:
 
         return connection
 
-    def _run_query(self, sql):
+    def _run_query(self, sql_query, params = None):
         """Runs a given SQL query via the global database connection.
 
         :param sql: MySQL query
         :return: Pandas DataFrame containing results for SELECT queries,
                 last inserted ID for INSERT queries, None for other queries
         """
-        if sql.strip().lower().startswith("select"):
-            return pd.read_sql_query(sql, self.sql_connection)  # type: ignore
+        if sql_query.strip().lower().startswith("select"):
+            return pd.read_sql_query(sql_query, self.sql_connection, params=params)  # type: ignore
         else:
             with self.sql_connection.cursor() as cursor:
-                cursor.execute(sql)
+                cursor.execute(sql_query, params)
                 self.sql_connection.commit()
-                if sql.strip().lower().startswith("insert"):
+                if sql_query.strip().lower().startswith("insert"):
                     return cursor.lastrowid
 
     def add_audio(self, audio_name: str, corpus_id: int, duration: float) -> int:
-        query = f"""
+        query = """
     INSERT INTO Audio
         (
             name, corpus_id, duration
         )
     VALUES
         (
-            '{audio_name}', {corpus_id}, {duration}
+            %s, %s, %s
         )
     """
-        audio_id = self._run_query(query)
+        params = (audio_name, corpus_id, duration)
+        audio_id = self._run_query(query, params)
         return audio_id  # type: ignore
-
-    def add_audio_segment(
-        self,
-        segment: Segment
-    ):
-        query = f"""
-    INSERT INTO Dataset 
-        (
-            file_path, file_with_user, data_gold, task, 
-            text_asr, audio_id, segment_num,
-            audio_lenght, duration, start_time, end_time, speaker_id
+    
+    def add_audio_segment(self, segment: Segment):
+        query = """
+            INSERT INTO Dataset 
+            (
+                file_path, file_with_user, data_gold, task, 
+                text_asr, audio_id, segment_num,
+                audio_lenght, duration, start_time, end_time, speaker_id
+            )
+            VALUES 
+            (
+                %s, 0, 0, 1, 
+                %s, %s, %s,
+                %s, %s, %s, %s, %s
+            )
+        """
+        params = (
+            segment.segment_path, segment.text_asr, segment.audio_id, 
+            segment.segment_num, segment.frames, segment.duration, 
+            segment.start_time, segment.end_time, segment.speaker_id
         )
-    VALUES 
-        (
-            '{segment.segment_path}', 0, 0, 1, 
-            '{segment.text_asr}', {segment.audio_id}, {segment.segment_num},
-            {segment.frames}, {segment.duration}, {segment.start_time}, {segment.end_time}, {segment.speaker_id}
-        )
-    """
-        return self._run_query(query)
-
+        return self._run_query(query, params)
+    
     def update_audio_duration(self, audio_id, audio_duration):
         query = f"""
         UPDATE Audio
