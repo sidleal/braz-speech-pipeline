@@ -61,8 +61,8 @@ class AudioToTextSegmentsConverter:
 
                 segments = self._generate_text_segments(temp_audio_file.name)
 
-                # logger.info(f"Creating audio {audio.name_with_no_spaces} on database")
-                audio_id = db.add_audio(audio.name_with_no_spaces, corpus_id, audio.duration)
+                logger.info(f"Creating audio {audio.name} on database")
+                audio_id = db.add_audio(audio.name, corpus_id, audio.duration)
 
                 self._save_segments(
                     audio_id, audio, segments, data, db, temp_audio_file
@@ -130,7 +130,7 @@ class AudioToTextSegmentsConverter:
                     segment["speaker"].split("_")[-1] if "speaker" in segment else None
                 )
 
-                segment_name = f"{i:04}_{audio.name_with_no_spaces}_{original_start_time}_{original_end_time}"
+                segment_name = f"{i:04}_{audio.name}_{original_start_time}_{original_end_time}"
 
                 transc_path = os.path.join(
                     output_transcription_folder, f"{segment_name}.txt"
@@ -148,7 +148,7 @@ class AudioToTextSegmentsConverter:
                 ]
                 audio_segment.export(segment_path_on_local, format="wav")
 
-                data["audio_name"].append(audio.name_with_no_spaces)
+                data["audio_name"].append(audio.name)
                 data["audio_segment_path"].append(segment_path_on_local)
                 data["start"].append(original_start_time)
                 data["end"].append(original_end_time)
