@@ -8,7 +8,6 @@ import subprocess
 import os
 
 from src.utils.exceptions import EmptyAudio
-from src.utils.logger import logger
 
 
 class AudioLoaderGoogleDrive:
@@ -68,7 +67,7 @@ class AudioLoaderGoogleDrive:
                 ]
             )
             if result.returncode != 0:
-                raise Exception("Error converting MP4 file to WAV using ffmpeg")
+                raise EmptyAudio("Error converting MP4 file to WAV using ffmpeg")
 
         # Load the audio file with librosa
         audio, sampling_rate = librosa.load(

@@ -13,6 +13,8 @@ from src.utils import google_drive, logger as lg
 from src.utils.database import Database
 from src.config import CONFIG
 from src.models.audio import Audio
+from src.utils.exceptions import EmptyAudio
+
 
 locale.getpreferredencoding = lambda: "UTF-8"
 
@@ -63,20 +65,25 @@ def diarize_and_transcribe(
                     .replace("_sem_cabeçalho", "")
                 )
 
-                # audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
-                # if not audios_with_name.empty:  # type: ignore
-                #     continue
+                audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
+                if not audios_with_name.empty:  # type: ignore
+                    continue
 
                 logger.info(f"Processing audio {audio_name}.")
 
                 audio_drive_id = item["id"]
 
                 logger.debug("Loading file from Google Drive")
-                audio_ndarray, non_silent_indexes = AudioLoaderGoogleDrive(
-                    google_drive_service,
-                    sample_rate=CONFIG.sample_rate,
-                    mono_channel=CONFIG.mono_channel,
-                ).load_and_downsample(audio_drive_id, format)
+                try:
+                    audio_ndarray, non_silent_indexes = AudioLoaderGoogleDrive(
+                        google_drive_service,
+                        sample_rate=CONFIG.sample_rate,
+                        mono_channel=CONFIG.mono_channel,
+                    ).load_and_downsample(audio_drive_id, format)
+                except EmptyAudio as e:
+                    logger.error(f"Audio {audio_name} with error and couldn't be loaded.")
+                    continue
+                    
 
                 audio = Audio(
                     name=audio_name,

@@ -40,8 +40,6 @@ class FileTransfer:
         out = stdout.readlines()
         err = stderr.readlines()
 
-        logger.error(err)
-
         injected_command = "".join(out)
         # reinterpret printf output as a command
 
