@@ -24,7 +24,7 @@ class MySQL(BaseModel):
 
 
 class RemoteMachine(BaseModel):
-    dataset_path: str = "~/BrazSpeechData/static/Dataset"
+    dataset_path: str = "/home/utf/BrazSpeechData/static/Dataset"
 
 
 class Config(BaseSettings):

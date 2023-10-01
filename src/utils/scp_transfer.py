@@ -1,6 +1,7 @@
 import paramiko
 from scp import SCPClient
 import os
+import pipes
 
 from src.config import CONFIG
 from src.utils.logger import logger
@@ -28,43 +29,33 @@ class FileTransfer:
         client.connect(server, port, user, password)
         return client
 
-    def mkdir(self, folder_path: str, recursive: bool = True):
-        if recursive:
-            # Split the folder path into individual folder names
-            folders = folder_path.split("/")
+    def mkdir(self, folder_path: str, recursive: bool = False):
+        command = f"printf '%q ' mkdir -p {pipes.quote(folder_path)}"  # Ignore error if the folder already exists
+        stdin, stdout, stderr = self.ssh.exec_command(command)
 
-            # Remove any empty folder names resulting from leading/trailing slashes
-            folders = [folder for folder in folders if folder]
+        # exec_command() returns file-like objects representing the input (stdin),
+        # output (stdout) and error (stderr) channels from the SSH session.
+        # You may need to call read() or readlines() on these objects to retrieve the actual command output.
+        out = stdout.readlines()
+        err = stderr.readlines()
 
-            # Create each folder recursively, if it does not exist
-            for i in range(1, len(folders) + 1):
-                partial_path = "/".join(folders[:i])
+        injected_command = "".join(out)
+        # reinterpret printf output as a command
 
-                if (
-                    partial_path in CONFIG.remote.dataset_path
-                    or partial_path == CONFIG.remote.dataset_path
-                ):
-                    continue
-
-                command = f"mkdir {partial_path} 2> /dev/null || true"  # Ignore error if the folder already exists
-                self.ssh.exec_command(command)
-        else:
-            command = f"mkdir {folder_path} 2> /dev/null || true"  # Ignore error if the folder already exists
-            self.ssh.exec_command(command)
+        # command = f"mkdir -p -v {folder_path}"  # Ignore error if the folder already exists
+        self.ssh.exec_command(injected_command)
 
     def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):
-        target = target.replace(" ", "\ ")
-        logger.debug("Creating folder if it does not exist")
         if target_is_folder:
             self.mkdir(target)
-            filename = os.path.basename(source).replace(" ", "\ ")
+            filename = os.path.basename(source)
             target = os.path.join(target, filename)
         else:
-            self.mkdir(os.path.dirname(target))
+            target_directory = os.path.dirname(target)
+            self.mkdir(target_directory)
 
         try:
-            logger.debug(f"Transfering file using source {source} and target {target}")
-            self.scp.put(source, target, **kwargs)
+            self.scp.put(source, target.encode(), **kwargs)
         except Exception as e:
             logger.error(f"Error transfering file.")
             logger.debug(e)

@@ -13,6 +13,8 @@ from src.utils import google_drive, logger as lg
 from src.utils.database import Database
 from src.config import CONFIG
 from src.models.audio import Audio
+from src.utils.exceptions import EmptyAudio
+
 
 locale.getpreferredencoding = lambda: "UTF-8"
 
@@ -67,28 +69,33 @@ def diarize_and_transcribe(
                 if not audios_with_name.empty:  # type: ignore
                     continue
 
-                OUTPUT_PATH = data_path / folder_name / audio_name
-
                 logger.info(f"Processing audio {audio_name}.")
 
                 audio_drive_id = item["id"]
 
                 logger.debug("Loading file from Google Drive")
-                audio_ndarray, non_silent_indexes = AudioLoaderGoogleDrive(
-                    google_drive_service,
-                    sample_rate=CONFIG.sample_rate,
-                    mono_channel=CONFIG.mono_channel,
-                ).load_and_downsample(audio_drive_id, format)
-
-                converter = AudioToTextSegmentsConverter(
-                    output_path=OUTPUT_PATH, whisperx_model=whisperx_model
-                )
+                try:
+                    audio_ndarray, non_silent_indexes = AudioLoaderGoogleDrive(
+                        google_drive_service,
+                        sample_rate=CONFIG.sample_rate,
+                        mono_channel=CONFIG.mono_channel,
+                    ).load_and_downsample(audio_drive_id, format)
+                except EmptyAudio as e:
+                    logger.error(f"Audio {audio_name} with error and couldn't be loaded.")
+                    continue
+                    
 
                 audio = Audio(
                     name=audio_name,
                     bytes=audio_ndarray,
                     sample_rate=CONFIG.sample_rate,
                     non_silent_interval=non_silent_indexes,
+                )
+                
+                OUTPUT_PATH = data_path / folder_name / audio.name_with_no_spaces
+
+                converter = AudioToTextSegmentsConverter(
+                    output_path=OUTPUT_PATH, whisperx_model=whisperx_model
                 )
 
                 converter.diarize_and_transcribe(audio, corpus_id)
