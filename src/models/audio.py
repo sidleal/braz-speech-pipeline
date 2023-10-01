@@ -37,3 +37,7 @@ class Audio(BaseModel):
     @property
     def end_offset_trimmed_audio(self) -> float:
         return self.non_silent_interval[1] / self.sample_rate
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {np.ndarray: lambda x: x.tolist()}

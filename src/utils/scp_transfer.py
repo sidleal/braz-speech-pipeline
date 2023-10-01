@@ -70,3 +70,15 @@ class FileTransfer:
             logger.debug(e)
         else:
             logger.debug(f"File transfered successfully.")
+
+    def read_all_files(self, path):
+        command = f"ls {path}"
+        stdin, stdout, stderr = self.ssh.exec_command(command)
+        print(stderr)
+        return stdout.readlines()
+
+    def read_all_files_in_folder_and_subfolders(self, path):
+        command = f"find {path} -type f"
+        stdin, stdout, stderr = self.ssh.exec_command(command)
+        print(stderr)
+        return stdout.readlines()
