@@ -111,7 +111,7 @@ class Database:
             segment.audio_id,
             segment.segment_num,
             segment.frames,
-            segment.duration,
+            segment.int_duration,
             segment.start_time,
             segment.end_time,
             segment.speaker,
