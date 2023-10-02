@@ -10,7 +10,7 @@ from src.clients.storage_base import BaseStorage
 
 from src.utils.logger import logger
 from src.config import CONFIG
-from src.models.file import FileToUpload
+from src.models.file import FileToUpload, AudioFormat
 from src.models.audio import Audio
 from src.models.segment import Segment, SegmentCreate, SegmentCreateInDB
 
@@ -35,7 +35,7 @@ class OutputPersistanceService:
         corpus_id: int,
         audio: Audio,
         segments: list[Segment],
-        audio_export_format: Literal["wav", "mp3"] = "wav",
+        audio_export_format: AudioFormat = AudioFormat.WAV,
         remote_storage_folder_id: Optional[str] = None,
     ):
         saved_segments = []

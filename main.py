@@ -8,6 +8,8 @@ from src.pipelines.transcribe import transcribe_audios_in_folder
 from src.clients.scp_transfer import FileTransfer
 from src.clients.database import Database
 
+from src.models.file import AudioFormat
+
 app = typer.Typer(
     no_args_is_help=True,
     help="Run data pipelines for diarization, transcription, metadata extraction for feeding the BrazSpeechData platform.",
@@ -27,8 +29,8 @@ def transcribe(
         None,
         help="Google Drive folder ID to save the transcriptions. If none is provided, the transcriptions will be saved in the same folder as the audios.",
     ),
-    format_filter: Literal["wav", "mp4", "mp3"] = typer.Option(
-        "wav", help="Filter audios by format"
+    format_filter: AudioFormat = typer.Option(
+        AudioFormat.WAV, help="Filter audios by format"
     ),
     save_to_db: bool = typer.Option(False, help="Save transcriptions to database"),
     save_to_drive: bool = typer.Option(
@@ -40,10 +42,10 @@ def transcribe(
 ):
     # Handle MUPE special case:
     if corpus_id == 1:
-        format_filter = "mp4"
+        format_filter = AudioFormat.MP4
         get_db_search_key = lambda x: "_".join(x.split("_")[:3])
     elif corpus_id == 2:
-        format_filter = "wav"
+        format_filter = AudioFormat.WAV
 
     get_db_search_key = lambda x: x
 

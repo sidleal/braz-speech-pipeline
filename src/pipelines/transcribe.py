@@ -17,7 +17,7 @@ from src.clients.scp_transfer import FileTransfer
 
 from src.models.audio import Audio
 from src.models.segment import Segment
-from src.models.file import File
+from src.models.file import File, AudioFormat
 
 from src.utils import logger as lg
 from src.utils.exceptions import EmptyAudio
@@ -39,7 +39,7 @@ def transcribe_audios_in_folder(
     file_transfer_client: Optional[FileTransfer] = None,
     save_to_drive: bool = False,
     storage_output_folder_id: Optional[str] = None,
-    format_filter: Optional[Literal["wav", "mp4", "mp3"]] = "wav",
+    format_filter: AudioFormat = AudioFormat.WAV,
     get_db_search_key: Callable[..., str] = lambda x: x,
 ):
     storage_client = GoogleDriveClient()

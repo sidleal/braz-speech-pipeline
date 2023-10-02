@@ -10,7 +10,7 @@ import os
 from src.utils.exceptions import EmptyAudio
 from src.clients.storage_base import BaseStorage
 from src.models.audio import Audio
-from src.models.file import File
+from src.models.file import File, AudioFormat
 
 
 class AudioLoaderService:
@@ -24,15 +24,15 @@ class AudioLoaderService:
         sample_rate: int,
         mono_channel: bool,
     ) -> Audio:
-        if file._extension == ".wav" or file._extension == ".mp3":
+        if file.extension == AudioFormat.WAV or file._extension == AudioFormat.MP3:
             audio_ndarray, loaded_sampling_rate = librosa.load(
                 self.remote.get_file_content(file.id),
                 sr=sample_rate,
                 mono=mono_channel,
             )
-        elif file._extension == ".mp4":
+        elif file.extension == AudioFormat.MP4:
             audio_ndarray, loaded_sampling_rate = self.__get_audio_from_mp4(
-                file.id, file._extension, sample_rate, mono_channel
+                file.id, sample_rate, mono_channel
             )
         else:
             raise ValueError("Invalid audio format.")
@@ -57,14 +57,13 @@ class AudioLoaderService:
     def __get_audio_from_mp4(
         self,
         file_id: str,
-        format: Literal[".wav", ".mp4"],
         sample_rate: int,
         mono_channel: bool,
     ) -> Tuple[np.ndarray, float]:
         file_content = self.remote.get_file_content(file_id)
 
         # Write the MP4 content to a temporary file and process with ffmpeg
-        with tempfile.NamedTemporaryFile(suffix=format) as temp_file:
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_file:
             temp_file.write(file_content.getvalue())
             temp_file.flush()
 

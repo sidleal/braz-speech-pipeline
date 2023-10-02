@@ -1,14 +1,21 @@
 from pydantic import BaseModel
 from typing import Optional
+from enum import Enum
 
 from src.utils.files import get_mime_from_extension
+
+
+class AudioFormat(str, Enum):
+    WAV = "wav"
+    MP4 = "mp4"
+    MP3 = "mp3"
 
 
 class File(BaseModel):
     id: str
     name: str
     mime_type: str
-    extension: str
+    extension: AudioFormat
     parents: list[str]
     size: int
 

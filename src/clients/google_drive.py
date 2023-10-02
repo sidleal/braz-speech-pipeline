@@ -8,7 +8,7 @@ from typing import Literal, Optional
 from src.utils.files import get_mime_from_extension
 from src.utils.logger import logger
 from src.clients.storage_base import BaseStorage
-from src.models.file import File, FileToUpload
+from src.models.file import File, FileToUpload, AudioFormat
 
 
 class GoogleDriveClient(BaseStorage):
@@ -35,7 +35,7 @@ class GoogleDriveClient(BaseStorage):
     def get_files_from_folder(
         self,
         folder_id,
-        filter_format: Optional[Literal["wav", "mp4", "mp3"]] = None,
+        filter_format: Optional[AudioFormat] = None,
         file_parents=[],
     ) -> list[File]:
         query = f"'{folder_id}' in parents and trashed = false"
