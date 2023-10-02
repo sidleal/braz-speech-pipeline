@@ -6,7 +6,7 @@ from sshtunnel import SSHTunnelForwarder
 import os
 
 from src.config import CONFIG
-from src.models.segment import Segment
+from src.models.segment import SegmentCreateInDB
 
 
 class Database:
@@ -59,7 +59,7 @@ class Database:
 
         return connection
 
-    def _run_query(self, sql_query, params = None):
+    def _run_query(self, sql_query, params=None):
         """Runs a given SQL query via the global database connection.
 
         :param sql: MySQL query
@@ -89,8 +89,8 @@ class Database:
         params = (audio_name, corpus_id, duration)
         audio_id = self._run_query(query, params)
         return audio_id  # type: ignore
-    
-    def add_audio_segment(self, segment: Segment):
+
+    def add_audio_segment(self, segment: SegmentCreateInDB):
         query = """
             INSERT INTO Dataset 
             (
@@ -106,12 +106,18 @@ class Database:
             )
         """
         params = (
-            segment.segment_path, segment.text_asr, segment.audio_id, 
-            segment.segment_num, segment.frames, segment.duration, 
-            segment.start_time, segment.end_time, segment.speaker_id
+            segment.segment_path,
+            segment.text_asr,
+            segment.audio_id,
+            segment.segment_num,
+            segment.frames,
+            segment.duration,
+            segment.start_time,
+            segment.end_time,
+            segment.speaker,
         )
         return self._run_query(query, params)
-    
+
     def update_audio_duration(self, audio_id, audio_duration):
         query = f"""
         UPDATE Audio

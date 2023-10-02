@@ -15,7 +15,11 @@ class FileTransfer:
             CONFIG.sshtunnel.username,
             CONFIG.sshtunnel.password,
         )
-        self.scp = SCPClient(self.ssh.get_transport())
+        transport = self.ssh.get_transport()
+        if transport is None or not transport.is_active():
+            raise Exception("SSH connection is not active.")
+
+        self.scp = SCPClient(transport)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
