@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Tuple
 import numpy as np
 
 
