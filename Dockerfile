@@ -7,9 +7,11 @@ WORKDIR /
 RUN apt-get -y update
 RUN apt-get install -y ffmpeg
 
-# Copy the requirements.txt file and install the dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --upgrade pip
+RUN pip install poetry
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-dev
 
 # Copy the entire application directory into the container
 COPY . .
