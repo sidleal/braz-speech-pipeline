@@ -87,6 +87,7 @@ def diarize_and_transcribe(
                     continue
 
                 audio = Audio(
+                    parent_folder_id=folder["folder_id"],
                     name=audio_name,
                     bytes=audio_ndarray,
                     sample_rate=CONFIG.sample_rate,

@@ -5,6 +5,7 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBa
 from google.oauth2 import service_account
 from typing import Literal, Optional
 
+from src.utils.files import get_mime_from_extension
 from src.utils.logger import logger
 from src.clients.storage_base import BaseStorage
 from src.models.file import File, FileToUpload
@@ -32,7 +33,10 @@ class GoogleDriveClient(BaseStorage):
         return credentials
 
     def get_files_from_folder(
-        self, folder_id, filter_format: Optional[Literal["wav", "mp4", "mp3"]] = None
+        self,
+        folder_id,
+        filter_format: Optional[Literal["wav", "mp4", "mp3"]] = None,
+        file_parents=[],
     ) -> list[File]:
         query = f"'{folder_id}' in parents and trashed = false"
         return_files = []
@@ -53,7 +57,9 @@ class GoogleDriveClient(BaseStorage):
             for item in items:
                 if item["mimeType"] == "application/vnd.google-apps.folder":
                     return_files.extend(
-                        self.get_files_from_folder(item["id"], filter_format)
+                        self.get_files_from_folder(
+                            item["id"], filter_format, [*file_parents, item["name"]]
+                        )
                     )
                 else:
                     file_name, file_extension = os.path.splitext(item["name"])
@@ -64,7 +70,7 @@ class GoogleDriveClient(BaseStorage):
                     ):
                         file = File(
                             id=item["id"],
-                            name=file_name,
+                            name="/".join([*file_parents, file_name]),
                             size=int(item["size"]),
                             mime_type=item["mimeType"],
                             extension=item["fileExtension"],

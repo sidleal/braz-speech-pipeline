@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional
 
+from src.utils.files import get_mime_from_extension
+
 
 class File(BaseModel):
     id: str
@@ -24,16 +26,4 @@ class FileToUpload(BaseModel):
 
     @property
     def mime_from_extension(self):
-        return {
-            "wav": "audio/wav",
-            "mp3": "audio/mp3",
-            "mp4": "video/mp4",
-            "txt": "text/plain",
-            ".doc": "application/vnd.google-apps.document",
-            ".xls": "application/vnd.google-apps.spreadsheet",
-            ".ppt": "application/vnd.google-apps.presentation",
-            ".pdf": "application/pdf",
-            ".jpg": "image/jpeg",
-            ".png": "image/png",
-            ".txt": "text/plain",
-        }[self.extension]
+        return get_mime_from_extension(self.extension)

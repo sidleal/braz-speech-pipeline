@@ -51,6 +51,12 @@ def transcribe_audios_in_folder(
         f"On the folder {folder_id}, we have {len(files)} audios{f' with format {format_filter}' if format_filter else ''}."
     )
     for audio in tqdm(files):
+        # Handle NURC special conditions
+        audio.name = (
+            audio.name.replace("_sem_cabecalho", "")
+            .replace("_sem_cabecallho", "")
+            .replace("_sem_cabeçalho", "")
+        )
         if db is not None:
             audios_with_name = db.get_audios_by_name(get_db_search_key(audio.name))
             if isinstance(audios_with_name, DataFrame) and not audios_with_name.empty:

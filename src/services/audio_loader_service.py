@@ -48,6 +48,7 @@ class AudioLoaderService:
 
         return Audio(
             name=file.name,
+            parent_folder_id=file.parents[0],
             bytes=audio_ndarray,
             sample_rate=int(loaded_sampling_rate),
             non_silent_interval=non_silent_indexes,

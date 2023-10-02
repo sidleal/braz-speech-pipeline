@@ -12,6 +12,7 @@ class Audio(BaseModel):
     sample_rate: int
     # channels: int
     non_silent_interval: np.ndarray
+    parent_folder_id: str
 
     @property
     def name_with_no_spaces(self) -> str:

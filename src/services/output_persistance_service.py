@@ -63,10 +63,7 @@ class OutputPersistanceService:
                             CONFIG.remote.dataset_path, saved_segment.segment_path
                         ),
                     )
-                if (
-                    self.remote_storage_client is not None
-                    and remote_storage_folder_id is not None
-                ):
+                if self.remote_storage_client is not None:
                     self._save_transcription_to_remote(
                         remote_storage_folder_id, audio, saved_segment
                     )
@@ -158,7 +155,7 @@ class OutputPersistanceService:
 
     def _save_transcription_to_remote(
         self,
-        folder_parent_id: str,
+        folder_parent_id: Optional[str],
         audio: Audio,
         segment: SegmentCreate,
     ):
@@ -172,6 +169,10 @@ class OutputPersistanceService:
             path=segment.segment_path,
             extension=segment.extension,
         )
+
+        if folder_parent_id is None:
+            file_to_upload.name = f"transcriptions/{audio.name}/file_to_upload.name"
+            folder_parent_id = audio.parent_folder_id
 
         self.remote_storage_client.upload_file_to_folder(
             folder_parent_id, file_to_upload
