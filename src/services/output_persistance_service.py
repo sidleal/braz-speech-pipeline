@@ -43,7 +43,7 @@ class OutputPersistanceService:
         for segment in segments:
             try:
                 saved_segment = self._save_transcription_to_file(
-                    audio, segment, audio_export_format
+                    audio, segment, audio_export_format.value
                 )
 
                 if saved_segment is None:

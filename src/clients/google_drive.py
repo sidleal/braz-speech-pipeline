@@ -65,8 +65,8 @@ class GoogleDriveClient(BaseStorage):
                     file_name, file_extension = os.path.splitext(item["name"])
                     if (
                         filter_format is None
-                        or file_extension == filter_format
-                        or item["fileExtension"] == filter_format
+                        or file_extension == filter_format.value
+                        or item["fileExtension"] == filter_format.value
                     ):
                         file = File(
                             id=item["id"],
