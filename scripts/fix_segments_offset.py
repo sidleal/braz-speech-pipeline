@@ -1,6 +1,8 @@
 import sys
 import os
 
+from src.clients import google_drive
+
 sys.path.append(os.path.abspath(os.path.join("..")))
 
 from logging import DEBUG
@@ -10,7 +12,7 @@ from tqdm import tqdm
 from typing import Literal, Callable
 
 from src.steps.audio_loader import AudioLoaderGoogleDrive
-from src.utils import google_drive, logger as lg
+from src.utils import logger as lg
 from src.utils.database import Database
 from src.config import CONFIG
 from src.models.audio import Audio
