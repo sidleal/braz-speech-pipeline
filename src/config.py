@@ -27,6 +27,12 @@ class RemoteMachine(BaseModel):
     dataset_path: str = "/home/utf/BrazSpeechData/static/Dataset"
 
 
+class Computation(BaseModel):
+    batch_size: int = 8
+    compute_type: str = "float16"
+    whisper_model: str = "large-v2"
+
+
 class Config(BaseSettings):
     pyannote: Pyannote
     sshtunnel: SSHTunnel
@@ -34,6 +40,7 @@ class Config(BaseSettings):
     remote: RemoteMachine = RemoteMachine()
     sample_rate: int = 16000
     mono_channel: bool = True
+    computation: Computation = Computation()
 
     class Config:
         env_file = ".env", "../.env", "../../.env"
