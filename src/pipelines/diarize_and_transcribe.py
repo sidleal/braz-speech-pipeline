@@ -10,7 +10,7 @@ from typing import Literal, Callable
 
 from src.steps import AudioLoaderGoogleDrive, AudioToTextSegmentsConverter
 from src.utils import google_drive, logger as lg
-from src.utils.database import Database
+from src.clients.database import Database
 from src.config import CONFIG
 from src.models.audio import Audio
 from src.utils.exceptions import EmptyAudio
@@ -81,9 +81,10 @@ def diarize_and_transcribe(
                         mono_channel=CONFIG.mono_channel,
                     ).load_and_downsample(audio_drive_id, format)
                 except EmptyAudio as e:
-                    logger.error(f"Audio {audio_name} with error and couldn't be loaded.")
+                    logger.error(
+                        f"Audio {audio_name} with error and couldn't be loaded."
+                    )
                     continue
-                    
 
                 audio = Audio(
                     name=audio_name,
@@ -91,7 +92,7 @@ def diarize_and_transcribe(
                     sample_rate=CONFIG.sample_rate,
                     non_silent_interval=non_silent_indexes,
                 )
-                
+
                 OUTPUT_PATH = data_path / folder_name / audio.name_with_no_spaces
 
                 converter = AudioToTextSegmentsConverter(

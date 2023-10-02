@@ -9,12 +9,13 @@ import tempfile
 from pydub import AudioSegment
 from typing import Literal, List, Any
 import torch
-from src.utils.database import Database
+from src.clients.database import Database
 from src.utils.logger import logger
 from src.config import CONFIG
-from src.utils.scp_transfer import FileTransfer
+from src.clients.scp_transfer import FileTransfer
 from src.models.audio import Audio
-from src.models.segment import Segment
+from src.models.segment import SegmentCreateInDB
+
 
 class SegmentWithSpeaker(SingleAlignedSegment):
     speaker: str
@@ -124,13 +125,17 @@ class AudioToTextSegmentsConverter:
         segment_name = "###"
         for i, segment in enumerate(segments):
             try:
-                original_start_time = audio.start_offset_trimmed_audio + segment["start"]
+                original_start_time = (
+                    audio.start_offset_trimmed_audio + segment["start"]
+                )
                 original_end_time = audio.start_offset_trimmed_audio + segment["end"]
                 speaker_id = (
                     segment["speaker"].split("_")[-1] if "speaker" in segment else None
                 )
 
-                segment_name = f"{i:04}_{audio.name}_{original_start_time}_{original_end_time}"
+                segment_name = (
+                    f"{i:04}_{audio.name}_{original_start_time}_{original_end_time}"
+                )
 
                 transc_path = os.path.join(
                     output_transcription_folder, f"{segment_name}.txt"
@@ -160,18 +165,20 @@ class AudioToTextSegmentsConverter:
                 frames = int(duration * 16000)
                 duration = int(duration)
 
-                audio_segment = Segment(
+                audio_segment = SegmentCreateInDB(
+                    sample_rate=audio.sample_rate,
+                    segment_name=segment_name,
+                    extension="wav",
                     segment_path=segment_path_on_local,
                     text_asr=transcription,
                     audio_id=audio_id,
                     segment_num=i,
-                    frames=frames,
-                    duration=duration,
                     start_time=original_start_time,
                     end_time=original_end_time,
-                    speaker_id=speaker_id if speaker_id is not None else -1,
+                    speaker=segment["speaker"],
+                    speaker_id=int(speaker_id) if speaker_id is not None else -1,
                 )
-                
+
                 db.add_audio_segment(audio_segment)
 
                 # Copy the segment to NewHouse machine

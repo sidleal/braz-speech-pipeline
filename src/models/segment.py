@@ -25,8 +25,6 @@ class Segment(BaseModel):
 
 class SegmentCreate(Segment):
     segment_path: str
-    original_start_time: float
-    original_end_time: float
     speaker_id: int
     segment_name: str
     extension: str

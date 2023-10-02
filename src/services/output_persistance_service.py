@@ -129,8 +129,8 @@ class OutputPersistanceService:
 
             return SegmentCreate(
                 **segment.dict(),
-                original_start_time=original_start_time,
-                original_end_time=original_end_time,
+                start_time=original_start_time,
+                end_time=original_end_time,
                 speaker_id=speaker_id,
                 segment_name=segment_name,
                 segment_path=segment_path_on_local,
