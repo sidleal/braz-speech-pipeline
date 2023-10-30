@@ -13,7 +13,7 @@ pymysql
 pydub
 # -e git+https://github.com/pyannote/pyannote-audio.git@develop#egg=pyannote.audio
 git+https://github.com/m-bain/whisperx.git
-torch==2.0.0 
+torch
 torchvision==0.15.1 
 torchaudio==2.0.1
 typer[all]

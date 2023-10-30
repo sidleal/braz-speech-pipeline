@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
 from src.pipelines.transcribe import transcribe_audios_in_folder
@@ -29,8 +29,8 @@ def transcribe(
         None,
         help="Google Drive folder ID to save the transcriptions. If none is provided, the transcriptions will be saved in the same folder as the audios.",
     ),
-    format_filter: AudioFormat = typer.Option(
-        AudioFormat.WAV, help="Filter audios by format"
+    format_filter: Optional[AudioFormat] = typer.Option(
+        None, help="Filter audios by format"
     ),
     save_to_db: bool = typer.Option(False, help="Save transcriptions to database"),
     save_to_drive: bool = typer.Option(

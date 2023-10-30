@@ -26,11 +26,11 @@ class File(BaseModel):
 
 class FileToUpload(BaseModel):
     name: str
-    extension: str
+    extension: Optional[str] = None
     path: Optional[str] = None
     content: Optional[bytes] = None
     mime_type: Optional[str] = None
 
     @property
     def mime_from_extension(self):
-        return get_mime_from_extension(self.extension)
+        return get_mime_from_extension(self.extension) if self.extension else None

@@ -3,17 +3,21 @@ import pandas as pd
 from pathlib import Path
 from pydub import AudioSegment
 from typing import Literal, Optional
+import soundfile as sf
 
 from src.clients.database import Database
 from src.clients.scp_transfer import FileTransfer
 from src.clients.storage_base import BaseStorage
+from src.clients.google_drive import GoogleDriveClient
 
-from src.utils.logger import logger
+from src.utils.logger import get_logger
 from src.config import CONFIG
 from src.models.file import FileToUpload, AudioFormat
 from src.models.audio import Audio
 from src.models.segment import Segment, SegmentCreate, SegmentCreateInDB
 
+logger = get_logger(__name__)
+logger.setLevel("DEBUG")
 
 class OutputPersistanceService:
     def __init__(
@@ -21,7 +25,7 @@ class OutputPersistanceService:
         output_folder: Path,
         db: Optional[Database] = None,
         file_transfer_client: Optional[FileTransfer] = None,
-        remote_storage_client: Optional[BaseStorage] = None,
+        remote_storage_client: Optional[GoogleDriveClient] = None,
     ):
         self.output_folder = output_folder
         self.output_folder.mkdir(parents=True, exist_ok=True)
@@ -39,9 +43,12 @@ class OutputPersistanceService:
         remote_storage_folder_id: Optional[str] = None,
     ):
         saved_segments = []
-
+        logger.info(f"Persisting data for audio {audio.name} transcription")
+        audio_id_in_db = None
+        
         for segment in segments:
             try:
+                logger.debug("Saving to files")
                 saved_segment = self._save_transcription_to_file(
                     audio, segment, audio_export_format.value
                 )
@@ -54,9 +61,11 @@ class OutputPersistanceService:
                     continue
 
                 if self.db is not None:
-                    self._save_transcription_to_db(corpus_id, audio, saved_segment)
+                    logger.debug("Saving to DB")
+                    audio_id_in_db = self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
 
                 if self.file_transfer_client is not None:
+                    logger.debug("Transfering to server")
                     self.file_transfer_client.put(
                         source=saved_segment.segment_path,
                         target=os.path.join(
@@ -64,6 +73,7 @@ class OutputPersistanceService:
                         ),
                     )
                 if self.remote_storage_client is not None:
+                    logger.debug("Saving to Google Drive")
                     self._save_transcription_to_remote(
                         remote_storage_folder_id, audio, saved_segment
                     )
@@ -77,14 +87,15 @@ class OutputPersistanceService:
                 )
                 return None
 
-        df = pd.DataFrame(saved_segments)
-        df.to_csv(
-            self.output_folder / "summary.csv",
-            index=False,
-            encoding="utf-8",
-            sep="|",
-            mode="w",
-        )
+        
+            df = pd.DataFrame(saved_segments)
+            df.to_csv(
+                self.output_folder / audio.name / "summary.csv",
+                index=False,
+                encoding="utf-8",
+                sep="|",
+                mode="w",
+            )
 
     def _save_transcription_to_file(
         self, audio: Audio, segment: Segment, audio_export_format: str
@@ -94,8 +105,8 @@ class OutputPersistanceService:
                 "Output folder not provided. Cannot save transcription to file."
             )
 
-        output_audio_folder = Path(self.output_folder / "audios")
-        output_transcription_folder = Path(self.output_folder / "transcriptions")
+        output_audio_folder = Path(self.output_folder / audio.name / "audios")
+        output_transcription_folder = Path(self.output_folder / audio.name / "texts")
 
         for folder in (output_audio_folder, output_transcription_folder):
             folder.mkdir(parents=True, exist_ok=True)
@@ -104,7 +115,7 @@ class OutputPersistanceService:
             original_start_time = audio.start_offset_trimmed_audio + segment.start_time
             original_end_time = audio.start_offset_trimmed_audio + segment.end_time
             speaker_id = int(segment.speaker) if segment.speaker is not None else -1
-            segment_name = f"{segment.segment_num:04}_{audio.name}_{original_start_time}_{original_end_time}"
+            segment_name = f"{segment.segment_num:04}_{os.path.basename(audio.name)}_{original_start_time:.2f}_{original_end_time:.2f}"
 
             transc_path = os.path.join(
                 output_transcription_folder, f"{segment_name}.txt"
@@ -117,22 +128,22 @@ class OutputPersistanceService:
                 output_audio_folder, f"{segment_name}.{audio_export_format}"
             )
 
-            audio_segment = AudioSegment(
-                audio.trimmed_audio[
-                    int(segment.start_time * 1000) : int(segment.end_time * 1000)
-                ]
-            )
-            audio_segment.export(segment_path_on_local, format=audio_export_format)
+            sf.write(segment_path_on_local,audio.trimmed_audio[
+                    int(segment.start_time * audio.sample_rate) : int(segment.end_time * audio.sample_rate)
+                ], audio.sample_rate )
 
-            return SegmentCreate(
+            segment_saved = SegmentCreate(
                 **segment.dict(),
-                start_time=original_start_time,
-                end_time=original_end_time,
                 speaker_id=speaker_id,
                 segment_name=segment_name,
                 segment_path=segment_path_on_local,
                 extension=audio_export_format,
             )
+            segment_saved.start_time = original_start_time
+            segment_saved.end_time = original_end_time
+            
+            logger.info(segment_saved)
+            return segment_saved
         except Exception as e:
             logger.error(
                 f"Erro ao processar segmento {segment.segment_num} in {audio.name}: {e}",
@@ -141,17 +152,19 @@ class OutputPersistanceService:
             return None
 
     def _save_transcription_to_db(
-        self, corpus_id: int, audio: Audio, segment: SegmentCreate
-    ):
+        self, corpus_id: int, audio: Audio, segment: SegmentCreate, audio_id_in_db: Optional[int] = None
+    ) -> int:
         if self.db is None:
             raise Exception(
                 "Database client not provided. Cannot save transcription to database."
             )
 
-        logger.info(f"Creating audio {audio.name} on database")
-        audio_id = self.db.add_audio(audio.name, corpus_id, audio.duration)
-        segment_to_db = SegmentCreateInDB(**segment.dict(), audio_id=audio_id)
+        if audio_id_in_db is None:
+            logger.info(f"Creating audio {audio.name} on database")
+            audio_id_in_db = self.db.add_audio(audio.name, corpus_id, audio.duration)
+        segment_to_db = SegmentCreateInDB(**segment.dict(), audio_id=audio_id_in_db)
         self.db.add_audio_segment(segment_to_db)
+        return audio_id_in_db
 
     def _save_transcription_to_remote(
         self,
@@ -164,16 +177,16 @@ class OutputPersistanceService:
                 "Remote storage client not provided. Cannot save transcription to remote storage."
             )
 
-        file_to_upload = FileToUpload(
-            name=segment.segment_name,
-            path=segment.segment_path,
-            extension=segment.extension,
-        )
+        for ext, folder in (("wav", "audios"), ("txt", "texts")):
+            file_to_upload = FileToUpload(
+                name=os.path.join("transcriptions",audio.name, folder, segment.segment_name),
+                path=(self.output_folder / audio.name / folder / f"{segment.segment_name}.{ext}").as_posix(),
+                extension=ext,
+            )
 
-        if folder_parent_id is None:
-            file_to_upload.name = f"transcriptions/{audio.name}/file_to_upload.name"
-            folder_parent_id = audio.parent_folder_id
+            if folder_parent_id is None:
+                folder_parent_id = audio.parent_folder_id
 
-        self.remote_storage_client.upload_file_to_folder(
-            folder_parent_id, file_to_upload
-        )
+            self.remote_storage_client.upload_file_to_folder(
+                folder_parent_id, file_to_upload
+            )

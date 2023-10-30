@@ -4,7 +4,9 @@ import os
 import pipes
 
 from src.config import CONFIG
-from src.utils.logger import logger
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class FileTransfer:

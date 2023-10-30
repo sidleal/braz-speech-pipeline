@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from io import BytesIO
-from typing import Optional, Literal
+from typing import Optional, List
 
 from src.models.file import File, FileToUpload
 
@@ -9,7 +9,7 @@ class BaseStorage(ABC):
     @abstractmethod
     def get_files_from_folder(
         self, folder_id, filter_format: Optional[str] = None
-    ) -> list[File]:
+    ) -> List[File]:
         pass
 
     @abstractmethod
@@ -23,7 +23,7 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def upload_folder_to_folder(self, parent_folder_id, folder_path) -> list[str]:
+    def upload_folder_to_folder(self, parent_folder_id, folder_name, folder_path) -> List[str]:
         pass
 
     @abstractmethod

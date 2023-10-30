@@ -7,13 +7,17 @@ from whisperx.types import (
 from whisperx.asr import FasterWhisperPipeline
 from typing import Literal, List
 import torch
+from io import BytesIO
+from pydub import AudioSegment
+import numpy as np
 
-from src.utils.logger import logger
+from src.utils.logger import get_logger
 from src.config import CONFIG
 from src.models.audio import Audio
 from src.models.segment import Segment
 
-
+logger = get_logger(__name__)
+logger.setLevel("DEBUG")
 class SegmentWithSpeaker(SingleAlignedSegment):
     speaker: str
 
@@ -50,7 +54,7 @@ class TranscriptionService:
             language_code=transcription_result["language"], device=self.device
         )
         align_result: AlignedTranscriptionResult = whisperx.align(
-            iter(transcription_result["segments"]),
+            transcription_result["segments"], #type: ignore
             model_a,
             metadata,
             audio.trimmed_audio,
@@ -63,16 +67,17 @@ class TranscriptionService:
         diarize_model = whisperx.DiarizationPipeline(
             use_auth_token=CONFIG.pyannote.auth_token, device=self.device
         )
-
+        
+        dict_input = {"waveform": torch.from_numpy(np.array(audio.trimmed_audio)).unsqueeze(0),
+                   "sample_rate": audio.sample_rate,
+                   "channel": 0}
         # # add min/max number of speakers if known
         # diarize_segments = diarize_model(audio_file)
-        diarize_segments = diarize_model(
-            audio.trimmed_audio, min_speakers=1, max_speakers=4
+        diarize_segments = diarize_model(dict_input, min_speakers=1, max_speakers=4
         )
 
         result = whisperx.assign_word_speakers(diarize_segments, align_result)
         resulted_segments: List[SegmentWithSpeaker] = result["segments"]
-
         segments = [
             Segment(
                 segment_num=idx,

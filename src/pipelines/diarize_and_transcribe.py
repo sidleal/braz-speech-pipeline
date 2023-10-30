@@ -19,7 +19,7 @@ from src.utils.exceptions import EmptyAudio
 locale.getpreferredencoding = lambda: "UTF-8"
 
 
-logger = lg.logger
+logger = lg.get_logger(__name__)
 logger.setLevel(level=DEBUG)
 
 # Load whisper model

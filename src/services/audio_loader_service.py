@@ -24,15 +24,16 @@ class AudioLoaderService:
         sample_rate: int,
         mono_channel: bool,
     ) -> Audio:
-        if file.extension == AudioFormat.WAV or file._extension == AudioFormat.MP3:
+
+        if file.extension == AudioFormat.WAV or file.extension == AudioFormat.MP3:
             audio_ndarray, loaded_sampling_rate = librosa.load(
-                self.remote.get_file_content(file.id),
+                self.remote.get_file_content(file),
                 sr=sample_rate,
                 mono=mono_channel,
             )
         elif file.extension == AudioFormat.MP4:
             audio_ndarray, loaded_sampling_rate = self.__get_audio_from_mp4(
-                file.id, sample_rate, mono_channel
+                file, sample_rate, mono_channel
             )
         else:
             raise ValueError("Invalid audio format.")
@@ -56,11 +57,11 @@ class AudioLoaderService:
 
     def __get_audio_from_mp4(
         self,
-        file_id: str,
+        file: File,
         sample_rate: int,
         mono_channel: bool,
     ) -> Tuple[np.ndarray, float]:
-        file_content = self.remote.get_file_content(file_id)
+        file_content = self.remote.get_file_content(file)
 
         # Write the MP4 content to a temporary file and process with ffmpeg
         with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_file:

@@ -3,13 +3,14 @@ import io
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBaseUpload
 from google.oauth2 import service_account
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 from src.utils.files import get_mime_from_extension
-from src.utils.logger import logger
+from src.utils.logger import get_logger
 from src.clients.storage_base import BaseStorage
 from src.models.file import File, FileToUpload, AudioFormat
 
+logger = get_logger(__name__)
 
 class GoogleDriveClient(BaseStorage):
     def __init__(self) -> None:
@@ -32,12 +33,12 @@ class GoogleDriveClient(BaseStorage):
 
         return credentials
 
-    def get_files_from_folder(
+    def  get_files_from_folder(
         self,
         folder_id,
         filter_format: Optional[AudioFormat] = None,
         file_parents=[],
-    ) -> list[File]:
+    ) -> List[File]:
         query = f"'{folder_id}' in parents and trashed = false"
         return_files = []
 
@@ -123,23 +124,29 @@ class GoogleDriveClient(BaseStorage):
         logger.info("File ID: %s" % uploaded_file.get("id"))
         return uploaded_file.get("id", None)
 
-    def upload_folder_to_folder(self, folder_id, folder_path) -> list[str]:
+    def upload_folder_to_folder(self, parent_folder_id, folder_name, local_folder_path) -> List[str]:
         uploaded_files = []
         file_metadata = {
-            "name": os.path.basename(folder_path),
-            "parents": [folder_id],
+            "name": os.path.basename(folder_name),
+            "parents": [parent_folder_id],
             "mimeType": "application/vnd.google-apps.folder",
         }
         file = self.service.files().create(body=file_metadata, fields="id").execute()
         logger.info("Folder ID: %s" % file.get("id"))
-        for file_name in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, file_name)
+        for file_name in os.listdir(local_folder_path):
+            file_path = os.path.join(local_folder_path, file_name)
             if os.path.isfile(file_path):
-                uploaded_file = self.upload_file_to_folder(file.get("id"), file_path)
+                
+                file_to_upload = FileToUpload(
+                    name=folder_name+"/"+file_name,
+                    path=file_path,
+                    extension=os.path.splitext(file_name)[1]
+                )
+                uploaded_file = self.upload_file_to_folder(file.get("id"), file_to_upload)
                 if uploaded_file is not None:
                     uploaded_files.append(uploaded_file)
             elif os.path.isdir(file_path):
-                self.upload_folder_to_folder(file.get("id"), file_path)
+                self.upload_folder_to_folder(file.get("id"), folder_name + "/" + file_name, file_path)
         return uploaded_files
 
     def create_folder(self, folder_name, parent_folder_id) -> str:
@@ -165,15 +172,21 @@ class GoogleDriveClient(BaseStorage):
             return file.get("id")
 
     def get_folder_by_name(self, parent_id, folder_name) -> Optional[dict]:
-        query = f"mimeType='application/vnd.google-apps.folder' and '{parent_id}' in parents and name='{folder_name}'"
+        query = f"mimeType='application/vnd.google-apps.folder' and '{parent_id}' in parents and name='{folder_name}' and trashed=false"
         results = (
             self.service.files()
             .list(q=query, fields="files(id, name, parents)")
             .execute()
         )
-        files = results.get("files", [])
-
-        if not files:
-            return None
+        items = results.get("files", [])
+        if items:
+            return items[0]
         else:
-            return files[0]
+            query = f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            results = self.service.files().list(q=query, fields="files(id, name, parents)").execute()
+            subfolders = results.get('files', [])
+            for subfolder in subfolders:
+                found_folder = self.get_folder_by_name(subfolder['id'], folder_name)
+                if found_folder:
+                    return found_folder
+            return None

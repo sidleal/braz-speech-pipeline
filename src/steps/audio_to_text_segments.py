@@ -10,13 +10,13 @@ from pydub import AudioSegment
 from typing import Literal, List, Any
 import torch
 from src.clients.database import Database
-from src.utils.logger import logger
+from src.utils.logger import get_logger
 from src.config import CONFIG
 from src.clients.scp_transfer import FileTransfer
 from src.models.audio import Audio
 from src.models.segment import SegmentCreateInDB
 
-
+logger = get_logger(__name__)
 class SegmentWithSpeaker(SingleAlignedSegment):
     speaker: str
 
