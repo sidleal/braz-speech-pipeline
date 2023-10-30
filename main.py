@@ -4,6 +4,7 @@ from typing import Literal, Optional
 
 from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
 from src.pipelines.transcribe import transcribe_audios_in_folder
+from src.pipelines.export import export_corpus_dataset
 
 from src.clients.scp_transfer import FileTransfer
 from src.clients.database import Database
@@ -16,6 +17,37 @@ app = typer.Typer(
 )
 
 DATA_PATH = Path("./data/")
+
+
+@app.command(name="export")
+def export(
+    corpus_id: int = typer.Option(..., help="Corpus ID"),
+    folder_id: str = typer.Option(
+        ..., help="Google Drive folder ID that contains the audios to transcribe"
+    ),
+    output_folder: Path = typer.Option(DATA_PATH, help="Output folder"),
+    format_filter: Optional[AudioFormat] = typer.Option(
+        None, help="Filter audios by format"
+    ),
+):
+    get_db_search_key = lambda x: x
+
+    # Handle MUPE special case:
+    if corpus_id == 1:
+        format_filter = AudioFormat.MP4
+        get_db_search_key = lambda x: "_".join(x.split("_")[:3])
+    elif corpus_id == 2:
+        format_filter = AudioFormat.WAV
+
+    with Database() as db:
+        export_corpus_dataset(
+            corpus_id=corpus_id,
+            folder_id=folder_id,
+            output_folder=output_folder,
+            db=db,
+            format_filter=format_filter,
+            get_db_search_key=get_db_search_key,
+        )
 
 
 @app.command(name="transcribe")
@@ -40,14 +72,14 @@ def transcribe(
         False, help="Transfer transcriptions to server"
     ),
 ):
+    get_db_search_key = lambda x: x
+
     # Handle MUPE special case:
     if corpus_id == 1:
         format_filter = AudioFormat.MP4
         get_db_search_key = lambda x: "_".join(x.split("_")[:3])
     elif corpus_id == 2:
         format_filter = AudioFormat.WAV
-
-    get_db_search_key = lambda x: x
 
     with FileTransfer() as ft:
         with Database() as db:
