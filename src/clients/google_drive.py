@@ -12,6 +12,7 @@ from src.models.file import File, FileToUpload, AudioFormat
 
 logger = get_logger(__name__)
 
+
 class GoogleDriveClient(BaseStorage):
     def __init__(self) -> None:
         self.service = self.__setup_service()
@@ -33,7 +34,7 @@ class GoogleDriveClient(BaseStorage):
 
         return credentials
 
-    def  get_files_from_folder(
+    def get_files_from_folder(
         self,
         folder_id,
         filter_format: Optional[AudioFormat] = None,
@@ -124,7 +125,9 @@ class GoogleDriveClient(BaseStorage):
         logger.info("File ID: %s" % uploaded_file.get("id"))
         return uploaded_file.get("id", None)
 
-    def upload_folder_to_folder(self, parent_folder_id, folder_name, local_folder_path) -> List[str]:
+    def upload_folder_to_folder(
+        self, parent_folder_id, folder_name, local_folder_path
+    ) -> List[str]:
         uploaded_files = []
         file_metadata = {
             "name": os.path.basename(folder_name),
@@ -136,17 +139,20 @@ class GoogleDriveClient(BaseStorage):
         for file_name in os.listdir(local_folder_path):
             file_path = os.path.join(local_folder_path, file_name)
             if os.path.isfile(file_path):
-                
                 file_to_upload = FileToUpload(
-                    name=folder_name+"/"+file_name,
+                    name=folder_name + "/" + file_name,
                     path=file_path,
-                    extension=os.path.splitext(file_name)[1]
+                    extension=os.path.splitext(file_name)[1],
                 )
-                uploaded_file = self.upload_file_to_folder(file.get("id"), file_to_upload)
+                uploaded_file = self.upload_file_to_folder(
+                    file.get("id"), file_to_upload
+                )
                 if uploaded_file is not None:
                     uploaded_files.append(uploaded_file)
             elif os.path.isdir(file_path):
-                self.upload_folder_to_folder(file.get("id"), folder_name + "/" + file_name, file_path)
+                self.upload_folder_to_folder(
+                    file.get("id"), folder_name + "/" + file_name, file_path
+                )
         return uploaded_files
 
     def create_folder(self, folder_name, parent_folder_id) -> str:
@@ -183,10 +189,73 @@ class GoogleDriveClient(BaseStorage):
             return items[0]
         else:
             query = f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            results = self.service.files().list(q=query, fields="files(id, name, parents)").execute()
-            subfolders = results.get('files', [])
+            results = (
+                self.service.files()
+                .list(q=query, fields="files(id, name, parents)")
+                .execute()
+            )
+            subfolders = results.get("files", [])
             for subfolder in subfolders:
-                found_folder = self.get_folder_by_name(subfolder['id'], folder_name)
+                found_folder = self.get_folder_by_name(subfolder["id"], folder_name)
                 if found_folder:
                     return found_folder
             return None
+
+    def search_file_in_folders(
+        self,
+        audio_name: str,
+        folder_ids: List[str],
+        file_format: Optional[AudioFormat] = None,
+    ) -> Optional[File]:
+        for folder_id in folder_ids:
+            # Search for the audio file in the current folder
+            query = f"'{folder_id}' in parents and name contains '{audio_name}' and trashed=false"
+            results = (
+                self.service.files()
+                .list(
+                    q=query,
+                    pageSize=10,
+                    fields="nextPageToken, files(id, name, size, mimeType, fileExtension, parents)",
+                )
+                .execute()
+            )
+            items = results.get("files", [])
+            for item in items:
+                file_name, file_extension = os.path.splitext(item["name"])
+                if (
+                    file_format is None
+                    or file_extension == file_format.value
+                    or (
+                        "fileExtension" in item
+                        and item["fileExtension"] == file_format.value
+                    )
+                ):
+                    return File(
+                        id=items[0]["id"],
+                        name=items[0]["name"],
+                        size=int(items[0]["size"]),
+                        mime_type=items[0]["mimeType"],
+                        extension=items[0]["fileExtension"],
+                        parents=items[0]["parents"],
+                    )
+
+            # If the audio file is not found, search in the subfolders
+            query = f"'{folder_id}' in parents and mimeType='application/vnd.google-apps.folder'"
+            results = (
+                self.service.files()
+                .list(q=query, pageSize=10, fields="nextPageToken, files(id, name)")
+                .execute()
+            )
+            subfolders = results.get("files", [])
+            if subfolders:
+                subfolder_ids = [subfolder["id"] for subfolder in subfolders]
+                # Recursive call to search in the subfolders
+                found_file = self.search_file_in_folders(
+                    audio_name, subfolder_ids, file_format
+                )
+                if found_file:
+                    return (
+                        found_file  # Return the matching file if found in a subfolder
+                    )
+
+        return None

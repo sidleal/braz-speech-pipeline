@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
 from src.pipelines.transcribe import transcribe_audios_in_folder
@@ -22,31 +22,43 @@ DATA_PATH = Path("./data/")
 @app.command(name="export")
 def export(
     corpus_id: int = typer.Option(..., help="Corpus ID"),
-    folder_id: str = typer.Option(
-        ..., help="Google Drive folder ID that contains the audios to transcribe"
+    output_folder: Path = typer.Option(DATA_PATH / "export", help="Output folder"),
+    csv: bool = typer.Option(False, help="Export to CSV"),
+    textgrid: bool = typer.Option(False, help="Export to TextGrid"),
+    continuous_text: bool = typer.Option(False, help="Export to continuous text"),
+    speakers_text: bool = typer.Option(False, help="Export to speakers text"),
+    original_audios: bool = typer.Option(False, help="Export original audios"),
+    google_drive_folder_ids: Optional[List[str]] = typer.Option(
+        None, help="Google Drive folder IDs"
     ),
-    output_folder: Path = typer.Option(DATA_PATH, help="Output folder"),
-    format_filter: Optional[AudioFormat] = typer.Option(
+    filter_format: Optional[AudioFormat] = typer.Option(
         None, help="Filter audios by format"
     ),
+    sample_rate: int = typer.Option(48000, help="Sample rate"),
+    all: bool = typer.Option(False, help="Export all"),
+    debug: bool = typer.Option(False, help="Debug mode"),
 ):
-    get_db_search_key = lambda x: x
-
-    # Handle MUPE special case:
-    if corpus_id == 1:
-        format_filter = AudioFormat.MP4
-        get_db_search_key = lambda x: "_".join(x.split("_")[:3])
-    elif corpus_id == 2:
-        format_filter = AudioFormat.WAV
+    if all:
+        csv = True
+        textgrid = True
+        continuous_text = True
+        speakers_text = True
+        original_audios = True
 
     with Database() as db:
         export_corpus_dataset(
             corpus_id=corpus_id,
-            folder_id=folder_id,
             output_folder=output_folder,
             db=db,
-            format_filter=format_filter,
-            get_db_search_key=get_db_search_key,
+            export_original_audios=original_audios,
+            google_drive_folder_ids=google_drive_folder_ids,
+            sample_rate=sample_rate,
+            filter_format=filter_format,
+            export_concanated_text=continuous_text,
+            export_speakers_text=speakers_text,
+            export_text_grid=textgrid,
+            export_to_csv=csv,
+            debug=debug,
         )
 
 

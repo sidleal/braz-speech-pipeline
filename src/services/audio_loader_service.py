@@ -23,8 +23,8 @@ class AudioLoaderService:
         file: File,
         sample_rate: int,
         mono_channel: bool,
+        normalize: bool = True,
     ) -> Audio:
-
         if file.extension == AudioFormat.WAV or file.extension == AudioFormat.MP3:
             audio_ndarray, loaded_sampling_rate = librosa.load(
                 self.remote.get_file_content(file),
@@ -43,9 +43,10 @@ class AudioLoaderService:
         ), "Couldn't read audio with desired sampling rate."
 
         _, non_silent_indexes = librosa.effects.trim(audio_ndarray, top_db=20)
-        peak = np.abs(audio_ndarray).max()
-        if peak > 1.0:
-            audio_ndarray = 0.98 * audio_ndarray / peak
+        if normalize:
+            peak = np.abs(audio_ndarray).max()
+            if peak > 1.0:
+                audio_ndarray = 0.98 * audio_ndarray / peak
 
         return Audio(
             name=file.name,

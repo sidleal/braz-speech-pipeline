@@ -2,6 +2,7 @@ import pandas as pd
 import pymysql
 import logging
 import sshtunnel
+from typing import List
 from sshtunnel import SSHTunnelForwarder
 import os
 
@@ -131,5 +132,30 @@ class Database:
         SELECT *
         FROM Audio
         WHERE name LIKE '{audio_name}%'
+        """
+        return self._run_query(query)
+
+    def get_audios_by_corpus_id(self, corpus_id, filter_finished=False):
+        query = f"""
+        SELECT *
+        FROM Audio
+        WHERE corpus_id = {corpus_id}
+        { f"AND finished >= 1" if filter_finished else ""}
+        """
+        return self._run_query(query)
+
+    def get_segments_by_audio_id(self, audio_id):
+        query = f"""
+        SELECT *
+        FROM Dataset
+        WHERE audio_id = {audio_id}
+        """
+        return self._run_query(query)
+    
+    def get_segments_by_audios_id_list(self, audios_ids: List[int]):
+        query = f"""
+        SELECT *
+        FROM Dataset
+        WHERE audio_id IN ({','.join([str(id) for id in audios_ids])})
         """
         return self._run_query(query)
