@@ -2,8 +2,8 @@ import typer
 from pathlib import Path
 from typing import Literal, Optional, List
 
-from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
-from src.pipelines.transcribe import transcribe_audios_in_folder
+# from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
+# from src.pipelines.transcribe import transcribe_audios_in_folder
 from src.pipelines.export import export_corpus_dataset
 
 from src.clients.scp_transfer import FileTransfer
@@ -24,6 +24,7 @@ def export(
     corpus_id: int = typer.Option(..., help="Corpus ID"),
     output_folder: Path = typer.Option(DATA_PATH / "export", help="Output folder"),
     csv: bool = typer.Option(False, help="Export to CSV"),
+    json_metadata: bool = typer.Option(False, help="Export to JSON metadata"),
     textgrid: bool = typer.Option(False, help="Export to TextGrid"),
     continuous_text: bool = typer.Option(False, help="Export to continuous text"),
     speakers_text: bool = typer.Option(False, help="Export to speakers text"),
@@ -44,6 +45,7 @@ def export(
         continuous_text = True
         speakers_text = True
         original_audios = True
+        json_metadata = True
 
     with Database() as db:
         export_corpus_dataset(
@@ -55,6 +57,7 @@ def export(
             sample_rate=sample_rate,
             filter_format=filter_format,
             export_concanated_text=continuous_text,
+            export_json_metadata=json_metadata,
             export_speakers_text=speakers_text,
             export_text_grid=textgrid,
             export_to_csv=csv,

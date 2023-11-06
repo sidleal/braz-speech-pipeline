@@ -3,7 +3,7 @@ import pandas as pd
 import textgrid
 from typing import List
 import soundfile as sf
-import librosa
+import json
 
 from src.models.file import AudioFormat
 from src.clients.google_drive import GoogleDriveClient
@@ -124,6 +124,24 @@ class Exporter:
         # Write the TextGrid to a file
         with open(output_file_path / f"{audio_name}.textgrid", "w") as file:
             tg.write(file)
+
+    def export_audios_metadata(self, audios: pd.DataFrame):
+        for _, row in audios.iterrows():
+            audio_name = row["name"]
+
+            metadata = row["json_metadata"]
+            if metadata is None:
+                metadata = {}
+            else:
+                metadata = json.loads(metadata)
+
+            output_file_path = self.output_folder / audio_name
+            output_file_path.mkdir(parents=True, exist_ok=True)
+
+            with open(
+                output_file_path / f"{audio_name}_metadata.json", "w", encoding="utf-8"
+            ) as file:
+                json.dump(metadata, file, ensure_ascii=False, indent=4)
 
     def export_original_audios(
         self,

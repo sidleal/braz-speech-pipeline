@@ -34,6 +34,7 @@ def export_corpus_dataset(
     export_to_csv: bool = False,
     export_concanated_text: bool = False,
     export_speakers_text: bool = False,
+    export_json_metadata: bool = False,
     export_text_grid: bool = False,
 ):
     audios = db.get_audios_by_corpus_id(corpus_id, filter_finished=True)
@@ -70,6 +71,10 @@ def export_corpus_dataset(
             sample_rate,
             export_audio_to_formats,
         )
+
+    if export_json_metadata:
+        logger.info(f"Exporting metadata for corpus {corpus_id}.")
+        exporter.export_audios_metadata(audios)
 
     if export_to_csv:
         logger.info(f"Exporting audios and segments for corpus {corpus_id} to csv.")
