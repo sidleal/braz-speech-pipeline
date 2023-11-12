@@ -56,7 +56,7 @@ def transcribe_audios_in_folder(
         folder_ids=folder_ids, filter_format=format_filter
     )
     logger.info(
-        f"On the folder {folder_id}, we have {len(files)} audios{f' with format {format_filter.value}' if format_filter else ''}."
+        f"On the folders with ids {folder_ids}, we have {len(files)} audios{f' with format {format_filter.value}' if format_filter else ''}."
     )
     for audio in tqdm(files):
         # Handle NURC special conditions
@@ -89,7 +89,7 @@ def transcribe_audios_in_folder(
                 audio=audio_to_process,
                 segments=segments,
                 audio_export_format=AudioFormat.WAV,
-                remote_storage_folder_id=storage_output_folder_id or folder_id,
+                remote_storage_folder_id=storage_output_folder_id or audio.parents[0],
             )
             logger.info("Transcription saved")
 
