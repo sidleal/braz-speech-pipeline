@@ -2,8 +2,7 @@ import typer
 from pathlib import Path
 from typing import Literal, Optional, List
 
-# from src.pipelines.diarize_and_transcribe import diarize_and_transcribe
-# from src.pipelines.transcribe import transcribe_audios_in_folder
+from src.pipelines.transcribe import transcribe_audios_in_folder
 from src.pipelines.export import export_corpus_dataset
 
 from src.clients.scp_transfer import FileTransfer
@@ -109,52 +108,6 @@ def transcribe(
                 save_to_drive=save_to_drive,
                 get_db_search_key=get_db_search_key,
             )
-
-
-@app.command(name="mupe")
-def mupe():
-    CORPUS_ID = 1
-
-    folders_to_explore = {
-        "mupe": {
-            "folder_id": "1cjSMGV1w5WEOGgt2fPC3C2bPZLUZ2saF",
-        }
-    }
-    format = ".mp4"
-    diarize_and_transcribe(
-        DATA_PATH,
-        CORPUS_ID,
-        folders_to_explore,
-        format,
-        lambda x: "_".join(x.split("_")[:3]),
-    )
-
-
-@app.command(name="nurc")
-def nurc():
-    CORPUS_ID = 2
-
-    folders_to_explore = {
-        "nurc_sp/EF": {
-            "folder_id": "1ndi8t_7shb3FB77ZTWd7xVW9KgLm6NLA",
-        },
-        "nurc_sp/DID": {
-            "folder_id": "1npveVhN9h5fsWhJzVKDUD7uQv76MNZ4i",
-        },
-        "nurc_sp/D2": {
-            "folder_id": "1njSedHukKrN8zJGM12eL-rt3aaOZpxdO",
-        },
-    }
-    format = ".wav"
-
-    diarize_and_transcribe(DATA_PATH, CORPUS_ID, folders_to_explore, format)
-
-
-@app.command(name="run")
-def run_folder(dataset_name: str, folder_id: str, corpus_id: int, format):
-    folders_to_explore = {dataset_name: {"folder_id": folder_id}}
-    diarize_and_transcribe(DATA_PATH, corpus_id, folders_to_explore, format)
-
 
 if __name__ == "__main__":
     app()

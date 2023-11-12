@@ -1,42 +1,43 @@
 import sys
 import os
 
-from src.clients import google_drive
-
 sys.path.append(os.path.abspath(os.path.join("..")))
 
 from logging import DEBUG
 import locale
 import os
 from tqdm import tqdm
+from pandas import DataFrame
 from typing import Literal, Callable
 
-from src.steps.audio_loader import AudioLoaderGoogleDrive
+from src.services.audio_loader_service import AudioLoaderService
+from src.clients.google_drive import  GoogleDriveClient
 from src.utils import logger as lg
-from src.utils.database import Database
+from src.clients.database import Database
 from src.config import CONFIG
 from src.models.audio import Audio
+from src.models.file import AudioFormat
 
 locale.getpreferredencoding = lambda: "UTF-8"
 
 
-logger = lg.logger
+logger = lg.get_logger(__name__)
 logger.setLevel(level=DEBUG)
 
 
 def analyze_differences_in_durations(
     folders_to_explore,
-    format: Literal[".wav", ".mp4"],
+    format: AudioFormat,
     get_db_search_key: Callable[..., str] = lambda x: x,
 ):
     with Database() as db:
         logger.info(f"Stablishing Google Drive connection")
-        google_drive_service = google_drive.setup_service()
+        google_drive_service = GoogleDriveClient()
 
         for folder_name, folder in folders_to_explore.items():
             logger.info(f"Exploring folder {folder_name}")
 
-            files_in_folder = google_drive.get_files_from_folder(
+            files_in_folder = google_drive_service.get_files_from_folder(
                 folder["folder_id"], format
             )
             logger.info(
@@ -54,31 +55,24 @@ def analyze_differences_in_durations(
                 )
 
                 audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
-                audio_in_db = (
-                    audios_with_name.iloc[0] if not audios_with_name.empty else None
-                )
-                if audio_in_db is None:
+                if isinstance(audios_with_name, DataFrame) and not audios_with_name.empty:
+                    audio_in_db = (
+                        audios_with_name.iloc[0] if not audios_with_name.empty else None
+                    )
+                    if audio_in_db is None:
+                        logger.info(f"Audio {audio_name} not in database. Skipping...")
+                        continue
+                else:
                     logger.info(f"Audio {audio_name} not in database. Skipping...")
                     continue
 
                 audio_drive_id = item["id"]
 
                 logger.debug(f"Loading audio {audio_name} from Google Drive")
-                audio_ndarray, non_silent_indexes = AudioLoaderGoogleDrive(
+                audio = AudioLoaderService(
                     google_drive_service,
-                    sample_rate=CONFIG.sample_rate,
-                    mono_channel=CONFIG.mono_channel,
-                ).load_and_downsample(audio_drive_id, format)
-
-                audio = Audio(
-                    name=audio_name,
-                    bytes=audio_ndarray,
-                    sample_rate=CONFIG.sample_rate,
-                    non_silent_interval=non_silent_indexes,
-                )
-
-                import json
-
+                ).load_audio(item, CONFIG.sample_rate, CONFIG.mono_channel, normalize=True)
+                
                 audio_dict = {
                     "name": audio.name,
                     "sample_rate": audio.sample_rate,
@@ -109,6 +103,6 @@ if __name__ == "__main__":
             "folder_id": "1njSedHukKrN8zJGM12eL-rt3aaOZpxdO",
         },
     }
-    format = ".wav"
+    format = AudioFormat.WAV
 
     analyze_differences_in_durations(folders_to_explore, format)

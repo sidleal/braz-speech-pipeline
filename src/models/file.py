@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 
 from src.utils.files import get_mime_from_extension
@@ -16,7 +16,7 @@ class File(BaseModel):
     name: str
     mime_type: str
     extension: AudioFormat
-    parents: list[str]
+    parents: List[str]
     size: int
 
     @property

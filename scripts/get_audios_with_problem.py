@@ -63,7 +63,7 @@ def analise_audios():
     audios = get_all_audios(db_conn)
     audio_with_problems = pd.DataFrame()
     
-    if not audios.empty:
+    if isinstance(audios, pd.DataFrame) and not audios.empty:
         for idx, audio in audios.iterrows():
             dataset = audio["name"].split("_")[1]
 
@@ -71,6 +71,11 @@ def analise_audios():
             segments_on_folder = set([f"data/nurc_sp/{dataset}/{audio['name']}/audios/" + file.name.replace("..", "data") for file in audio_path.glob("*")])  # Convert to a set
             
             segments_on_db = get_segments_by_audio_id(db_conn, audio["id"])
+            
+            if not isinstance(segments_on_db, pd.DataFrame) or segments_on_db.empty:
+                print(f"Couldn't find segments for audio with ID {audio['id']}")
+                continue
+            
             segments_on_db_set = set(segments_on_db["file_path"])  # Convert to a set
             
             
