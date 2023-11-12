@@ -1,23 +1,26 @@
-# Use the official Python 3.10 image as the base image
-FROM python:3.10
+# Use an official Python runtime with CUDA support as a parent image
+FROM nvidia/cuda:11.0-base-ubuntu20.04
 
-# Set the working directory inside the container
-WORKDIR /
+# Set the working directory in the container to /app
+WORKDIR /app
 
-RUN apt-get -y update
-RUN apt-get install -y ffmpeg
+# Copy the current directory contents into the container at /app
+COPY . /app
 
+# Install any needed packages specified in requirements.txt
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip
-RUN pip install poetry
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev
+# Install Poetry
+RUN pip3 install poetry
 
-# Copy the entire application directory into the container
-COPY . .
+# Install dependencies using Poetry
+RUN poetry config virtualenvs.create false \
+  && poetry install
 
-# Define the volume mounts
-VOLUME ["/data", "/logs"]
+# Make port 80 available to the world outside this container
+EXPOSE 80
 
-# Run the main.py file
-CMD ["python", "main.py"]
+# Run app.py when the container launches
+CMD ["python3", "main.py"]
