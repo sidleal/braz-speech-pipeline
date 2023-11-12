@@ -34,6 +34,19 @@ class GoogleDriveClient(BaseStorage):
 
         return credentials
 
+    def get_files_from_folders(
+            self,
+            folder_ids: List[str],
+            filter_format: Optional[AudioFormat] = None,
+            file_parents=[]
+        ) -> List[File]:
+        return_files = []
+        for folder_id in folder_ids:
+            return_files.extend(
+                self.get_files_from_folder(folder_id, filter_format, file_parents)
+            )
+        return return_files
+    
     def get_files_from_folder(
         self,
         folder_id,

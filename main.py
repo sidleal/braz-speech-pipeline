@@ -67,8 +67,8 @@ def export(
 @app.command(name="transcribe")
 def transcribe(
     corpus_id: int = typer.Option(..., help="Corpus ID"),
-    folder_id: str = typer.Option(
-        ..., help="Google Drive folder ID that contains the audios to transcribe"
+    folder_ids: List[str] = typer.Option(
+        ..., help="Google Drive folder IDs that contain the audios to transcribe"
     ),
     output_folder: Path = typer.Option(DATA_PATH, help="Output folder"),
     storage_output_folder_id: str = typer.Option(
@@ -99,7 +99,7 @@ def transcribe(
         with Database() as db:
             transcribe_audios_in_folder(
                 corpus_id=corpus_id,
-                folder_id=folder_id,
+                folder_ids=folder_ids,
                 output_folder=output_folder,
                 db=db if save_to_db else None,
                 storage_output_folder_id=storage_output_folder_id,

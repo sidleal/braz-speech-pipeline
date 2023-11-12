@@ -32,7 +32,7 @@ logger.setLevel(level=DEBUG)
 
 def transcribe_audios_in_folder(
     corpus_id: int,
-    folder_id: str,
+    folder_ids: List[str],
     output_folder: Path,
     db: Optional[Database] = None,
     file_transfer_client: Optional[FileTransfer] = None,
@@ -52,8 +52,8 @@ def transcribe_audios_in_folder(
             )
 
     
-    files: List[File] = storage_client.get_files_from_folder(
-        folder_id=folder_id, filter_format=format_filter
+    files: List[File] = storage_client.get_files_from_folders(
+        folder_ids=folder_ids, filter_format=format_filter
     )
     logger.info(
         f"On the folder {folder_id}, we have {len(files)} audios{f' with format {format_filter.value}' if format_filter else ''}."
