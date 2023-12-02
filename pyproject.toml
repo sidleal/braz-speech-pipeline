@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Vinicius Molina"]
 readme = "README.md"
-packages = [{include = "braz_speech_pipeline"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -27,6 +26,11 @@ pydantic = "^1.10.9"
 textgrid = "^1.5"
 torchaudio = "^2.1.0"
 pyarrow = "^14.0.0"
+transformers = "^4.35.2"
+ffmpeg = "^1.4"
+nltk = "^3.8.1"
+ctranslate2 = "^3.22.0"
+faster-whisper = "^0.10.0"
 
 [build-system]
 requires = ["poetry-core"]

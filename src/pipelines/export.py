@@ -10,7 +10,9 @@ from typing import List, Optional
 from src.services.exporter import Exporter
 
 from src.clients.database import Database
-from src.models.file import AudioFormat
+from src.models.file import AudioFormat, File
+from src.clients.google_drive import GoogleDriveClient
+
 
 from src.utils import logger as lg
 
@@ -53,24 +55,23 @@ def export_corpus_dataset(
         return
 
     exporter = Exporter(output_folder)
-
+    files_dict_by_name = {}
     if export_original_audios:
         assert (
             google_drive_folder_ids is not None
         ), "You must provide at least one folder ID from Google Drive for exporting original audios."
         assert (
             filter_format is not None
-        ), "You must provide a format for searching the audio files in Google Drive (wav or mp3)."
-        logger.info(
-            f"Exporting original audios for corpus {corpus_id}. This may take a while."
+        ), "You must provide a format for searching the audio files in Google Drive (wav, mp3 or mp4)."
+
+        storage_client = GoogleDriveClient()
+        files: List[File] = storage_client.get_files_from_folders(
+            folder_ids=google_drive_folder_ids, filter_format=filter_format
         )
-        exporter.export_original_audios(
-            audios,
-            google_drive_folder_ids,
-            filter_format,
-            sample_rate,
-            export_audio_to_formats,
-        )
+
+        files_dict_by_name: dict[str, File] = {
+            File.clean_name(file.name): file for file in files
+        }
 
     if export_json_metadata:
         logger.info(f"Exporting metadata for corpus {corpus_id}.")
@@ -119,10 +120,20 @@ def export_corpus_dataset(
                 logger.info(f"Exporting text grid files for corpus {corpus_id}.")
                 exporter.export_textgrid_file(audio_name, sorted_group)
 
-    # logger.info(f"Found {len(audios)} audios for corpus {corpus_id}.")
-    # files: List[File] = storage_client.get_files_from_folder(
-    #     folder_id=folder_id, filter_format=format_filter
-    # )
-    # logger.info(
-    #     f"On the folder {folder_id}, we have {len(files)} audios{f' with format {format_filter.value}' if format_filter else ''}."
-    # )
+            if export_original_audios:
+                assert (
+                    google_drive_folder_ids is not None
+                ), "You must provide at least one folder ID from Google Drive for exporting original audios."
+                assert (
+                    filter_format is not None
+                ), "You must provide a format for searching the audio files in Google Drive (wav, mp3 or mp4)."
+
+                logger.info(
+                    f"Exporting original audios for corpus {corpus_id}. This may take a while."
+                )
+                exporter.export_original_audios(
+                    audio_name,
+                    files_dict_by_name,
+                    sample_rate,
+                    export_audio_to_formats,
+                )

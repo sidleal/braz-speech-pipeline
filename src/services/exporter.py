@@ -5,7 +5,7 @@ from typing import List
 import soundfile as sf
 import json
 
-from src.models.file import AudioFormat
+from src.models.file import AudioFormat, File
 from src.clients.google_drive import GoogleDriveClient
 from src.services.audio_loader_service import AudioLoaderService
 from src.utils.logger import get_logger
@@ -69,7 +69,7 @@ class Exporter:
 
             # If the speaker has changed or it's the first segment, append the current speaker's text to formatted_text
             if current_speaker is not None and current_speaker != speaker_id:
-                formatted_text += f'SPEAKER {int(current_speaker + 1)}: {" ".join(current_speaker_text)}\n\n'
+                formatted_text += f'SPEAKER {int(current_speaker)}: {" ".join(current_speaker_text)}\n\n'
                 current_speaker_text = (
                     []
                 )  # Reset current_speaker_text for the new speaker
@@ -80,7 +80,9 @@ class Exporter:
             )  # Append the text to the current speaker's text
 
         # Append the last speaker's text
-        formatted_text += f'SPEAKER {int((current_speaker or 0) + 1)}: {" ".join(current_speaker_text)}\n'
+        formatted_text += (
+            f'SPEAKER {int(current_speaker or 0)}: {" ".join(current_speaker_text)}\n'
+        )
 
         output_file_path = self.output_folder / audio_name
         output_file_path.mkdir(parents=True, exist_ok=True)
@@ -145,40 +147,40 @@ class Exporter:
 
     def export_original_audios(
         self,
-        audios: pd.DataFrame,
-        folder_ids: List[str],
-        filter_format: AudioFormat,
+        audio_name: str,
+        all_files: dict[str, File],
         sample_rate: int,
         target_formats: List[AudioFormat],
     ):
         storage_client = GoogleDriveClient()
 
-        for _, row in audios.iterrows():
-            audio_name = row["name"]
+        logger.debug(f"Working on audio {audio_name}.")
 
-            # Get the audio file from Google Drive
-            audio_file = storage_client.search_file_in_folders(
-                audio_name, folder_ids, filter_format
+        # Get the audio file from Google Drive
+        audio_file = all_files.get(File.clean_name(audio_name), None)
+
+        if audio_file is None:
+            logger.warning(
+                f"Audio {audio_name} not found in GoogleDrive provided folders. Skipping."
             )
+            return
 
-            if audio_file is None:
-                logger.warning(
-                    f"Audio {audio_name} not found in GoogleDrive provided folders. Skipping."
-                )
-                continue
+        logger.info(
+            f"Audio {audio_name} found in GoogleDrive provided folders. Processing."
+        )
+        # Load the audio file
+        audio = AudioLoaderService(storage_client).load_audio(
+            audio_file, sample_rate, mono_channel=True, normalize=False
+        )
 
-            # Load the audio file
-            audio = AudioLoaderService(storage_client).load_audio(
-                audio_file, sample_rate, mono_channel=True, normalize=False
+        output_file_path = self.output_folder / audio_name
+        output_file_path.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Audio {audio_name} loaded. Converting to target formats.")
+        # Convert the audio file to the target formats
+        for target_format in target_formats:
+            sf.write(
+                output_file_path / f"{audio_name}.{target_format.value}",
+                audio.bytes,
+                sample_rate,
             )
-
-            output_file_path = self.output_folder / audio_name
-            output_file_path.mkdir(parents=True, exist_ok=True)
-
-            # Convert the audio file to the target formats
-            for target_format in target_formats:
-                sf.write(
-                    output_file_path / f"{audio_name}.{target_format.value}",
-                    audio.bytes,
-                    sample_rate,
-                )

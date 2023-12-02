@@ -23,6 +23,17 @@ class File(BaseModel):
     def _extension(self) -> str:
         return "." + self.extension.replace(".", "")
 
+    @staticmethod
+    def clean_name(name: str) -> str:
+        return (
+            name.replace("_sem_cabecalho", "")
+            .replace("_sem_cabecallho", "")
+            .replace("_sem_cabeçalho", "")
+            .strip()
+            .split("/")[-1]
+            .split(".")[0]
+        )
+
 
 class FileToUpload(BaseModel):
     name: str
