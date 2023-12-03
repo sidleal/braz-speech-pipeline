@@ -1,4 +1,5 @@
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 from typing import Optional
 
 
@@ -21,6 +22,7 @@ class MySQL(BaseModel):
     username: str
     password: str
     database: str
+    use_ssh: bool = True
 
 
 class RemoteMachine(BaseModel):

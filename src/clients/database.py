@@ -11,7 +11,7 @@ from src.models.segment import SegmentCreateInDB
 
 
 class Database:
-    def __enter__(self, with_ssh: bool = True):
+    def __enter__(self, with_ssh: bool = CONFIG.mysql.use_ssh):
         self.ssh = self._open_ssh_tunnel() if with_ssh else None
         self.sql_connection = self._mysql_connect()
 
