@@ -6,6 +6,7 @@ import locale
 from pandas import DataFrame
 import pandas as pd
 from typing import List, Optional
+import os
 
 from src.services.exporter import Exporter
 
@@ -22,6 +23,8 @@ locale.getpreferredencoding = lambda: "UTF-8"
 logger = lg.get_logger(__name__)
 logger.setLevel(level=DEBUG)
 
+def check_file_exists(audio_folder_path, file_name):
+    return os.path.exists(os.path.join(audio_folder_path, file_name))
 
 def export_corpus_dataset(
     corpus_id: int,
@@ -73,16 +76,12 @@ def export_corpus_dataset(
             File.clean_name(file.name): file for file in files
         }
 
-    if export_json_metadata:
-        logger.info(f"Exporting metadata for corpus {corpus_id}.")
-        exporter.export_audios_metadata(audios)
-
     if export_to_csv:
         logger.info(f"Exporting audios and segments for corpus {corpus_id} to csv.")
         exporter.export_to_csv(corpus_id, audios, segments)
 
-    if export_concanated_text or export_speakers_text or export_text_grid:
-        audios = audios.rename(
+    if export_concanated_text or export_speakers_text or export_text_grid or export_json_metadata or export_original_audios:
+        prepared_audios = audios.rename(
             columns={
                 "id": "audio_id",
                 "name": "audio_name",
@@ -90,7 +89,7 @@ def export_corpus_dataset(
             }
         )
         # Joining the DataFrames
-        merged_df = pd.merge(segments, audios, on="audio_id")
+        merged_df = pd.merge(segments, prepared_audios, on="audio_id")
 
         # Group by audio_id
         grouped = merged_df.groupby("audio_id")
@@ -98,29 +97,34 @@ def export_corpus_dataset(
         for audio_id, group in tqdm(grouped):
             # Get the audio_name for this audio_id
             audio_name = group["audio_name"].iloc[0]
-
             logger.info(
-                f"Working on the export of audio {audio_name} for corpus {corpus_id}."
+                f" # Working on the export of audio {audio_name}."
             )
 
             # Sort the group by segment_num
             sorted_group = group.sort_values("segment_num")
 
-            if export_concanated_text:
+            if export_json_metadata and not check_file_exists(output_folder / audio_name, f"{audio_name}_metadata.json"):
+                
+                logger.info(f"Exporting metadata to json.")
+                audio = audios[audios.name == audio_name].iloc[0]
+                exporter.export_audio_metadata(audio)
+                
+            if export_concanated_text and not check_file_exists(output_folder / audio_name, f"{audio_name}_concatenated_text.txt"):
                 logger.info(
-                    f"Exporting concatenated text files for corpus {corpus_id}."
+                    f"Exporting concatenated text file."
                 )
-                exporter.export_concatenated_text_files(audio_name, sorted_group)
+                exporter.export_concatenated_text_file(audio_name, sorted_group)
 
-            if export_speakers_text:
-                logger.info(f"Exporting speakers text files for corpus {corpus_id}.")
+            if export_speakers_text and not check_file_exists(output_folder / audio_name, f"{audio_name}_by_speaker.txt"):
+                logger.info(f"Exporting speakers text file.")
                 exporter.export_speakers_text_file(audio_name, sorted_group)
 
-            if export_text_grid:
-                logger.info(f"Exporting text grid files for corpus {corpus_id}.")
+            if export_text_grid and not check_file_exists(output_folder / audio_name, f"{audio_name}.textgrid"):
+                logger.info(f"Exporting text grid file.")
                 exporter.export_textgrid_file(audio_name, sorted_group)
 
-            if export_original_audios:
+            if export_original_audios and (not check_file_exists(output_folder / audio_name, f"{audio_name}.wav") or not check_file_exists(output_folder / audio_name, f"{audio_name}.mp3")):
                 assert (
                     google_drive_folder_ids is not None
                 ), "You must provide at least one folder ID from Google Drive for exporting original audios."
@@ -129,7 +133,7 @@ def export_corpus_dataset(
                 ), "You must provide a format for searching the audio files in Google Drive (wav, mp3 or mp4)."
 
                 logger.info(
-                    f"Exporting original audios for corpus {corpus_id}. This may take a while."
+                    f"Exporting original audio."
                 )
                 exporter.export_original_audios(
                     audio_name,

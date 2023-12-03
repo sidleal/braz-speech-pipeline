@@ -140,6 +140,7 @@ class Database:
         SELECT *
         FROM Audio
         WHERE corpus_id = {corpus_id}
+        AND (error_flag is null OR error_flag = 0 OR error_flag = false)
         { f"AND finished >= 1" if filter_finished else ""}
         """
         return self._run_query(query)

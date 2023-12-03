@@ -32,7 +32,7 @@ class Exporter:
         )
         pass
 
-    def export_concatenated_text_files(self, audio_name: str, group):
+    def export_concatenated_text_file(self, audio_name: str, group):
         # sorted_group = group.sort_values('segment_num')
 
         # Concatenate the text
@@ -127,23 +127,22 @@ class Exporter:
         with open(output_file_path / f"{audio_name}.textgrid", "w") as file:
             tg.write(file)
 
-    def export_audios_metadata(self, audios: pd.DataFrame):
-        for _, row in audios.iterrows():
-            audio_name = row["name"]
+    def export_audio_metadata(self, audio: pd.Series):
+        audio_name = audio["name"]
 
-            metadata = row["json_metadata"]
-            if metadata is None:
-                metadata = {}
-            else:
-                metadata = json.loads(metadata)
+        metadata = audio["json_metadata"]
+        if metadata is None:
+            metadata = {}
+        else:
+            metadata = json.loads(metadata)
 
-            output_file_path = self.output_folder / audio_name
-            output_file_path.mkdir(parents=True, exist_ok=True)
+        output_file_path = self.output_folder / audio_name
+        output_file_path.mkdir(parents=True, exist_ok=True)
 
-            with open(
-                output_file_path / f"{audio_name}_metadata.json", "w", encoding="utf-8"
-            ) as file:
-                json.dump(metadata, file, ensure_ascii=False, indent=4)
+        with open(
+            output_file_path / f"{audio_name}_metadata.json", "w", encoding="utf-8"
+        ) as file:
+            json.dump(metadata, file, ensure_ascii=False, indent=4)
 
     def export_original_audios(
         self,
@@ -154,7 +153,6 @@ class Exporter:
     ):
         storage_client = GoogleDriveClient()
 
-        logger.debug(f"Working on audio {audio_name}.")
 
         # Get the audio file from Google Drive
         audio_file = all_files.get(File.clean_name(audio_name), None)
@@ -165,7 +163,7 @@ class Exporter:
             )
             return
 
-        logger.info(
+        logger.debug(
             f"Audio {audio_name} found in GoogleDrive provided folders. Processing."
         )
         # Load the audio file
@@ -176,7 +174,7 @@ class Exporter:
         output_file_path = self.output_folder / audio_name
         output_file_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Audio {audio_name} loaded. Converting to target formats.")
+        logger.debug(f"Audio {audio_name} loaded. Converting to target formats.")
         # Convert the audio file to the target formats
         for target_format in target_formats:
             sf.write(
