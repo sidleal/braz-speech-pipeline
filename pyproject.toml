@@ -32,6 +32,7 @@ nltk = "^3.8.1"
 ctranslate2 = "^3.22.0"
 faster-whisper = "^0.10.0"
 pyannote-audio = "^3.1.1"
+levenshtein = "^0.23.0"
 
 [build-system]
 requires = ["poetry-core"]
