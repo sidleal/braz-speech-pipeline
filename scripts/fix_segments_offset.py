@@ -1,7 +1,10 @@
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join("..")))
+import sys
+
+sys.path.append("/Users/64926/projects/tarsila/braz-speech-pipeline/")
+
 
 from logging import DEBUG
 import locale
@@ -11,7 +14,7 @@ from pandas import DataFrame
 from typing import Literal, Callable
 
 from src.services.audio_loader_service import AudioLoaderService
-from src.clients.google_drive import  GoogleDriveClient
+from src.clients.google_drive import GoogleDriveClient
 from src.utils import logger as lg
 from src.clients.database import Database
 from src.config import CONFIG
@@ -45,7 +48,7 @@ def analyze_differences_in_durations(
             )
 
             for item in tqdm(files_in_folder):
-                audio_name = os.path.splitext(item["name"])[0]
+                audio_name = os.path.splitext(item.name)[0]
 
                 # Handle NURC special conditions
                 audio_name = (
@@ -55,7 +58,10 @@ def analyze_differences_in_durations(
                 )
 
                 audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
-                if isinstance(audios_with_name, DataFrame) and not audios_with_name.empty:
+                if (
+                    isinstance(audios_with_name, DataFrame)
+                    and not audios_with_name.empty
+                ):
                     audio_in_db = (
                         audios_with_name.iloc[0] if not audios_with_name.empty else None
                     )
@@ -66,13 +72,13 @@ def analyze_differences_in_durations(
                     logger.info(f"Audio {audio_name} not in database. Skipping...")
                     continue
 
-                audio_drive_id = item["id"]
-
                 logger.debug(f"Loading audio {audio_name} from Google Drive")
                 audio = AudioLoaderService(
                     google_drive_service,
-                ).load_audio(item, CONFIG.sample_rate, CONFIG.mono_channel, normalize=True)
-                
+                ).load_audio(
+                    item, CONFIG.sample_rate, CONFIG.mono_channel, normalize=True
+                )
+
                 audio_dict = {
                     "name": audio.name,
                     "sample_rate": audio.sample_rate,
@@ -83,10 +89,26 @@ def analyze_differences_in_durations(
                 }
 
                 logger.info(f"Audio: {audio_dict}")
-                if audio.duration != audio_in_db["duration"]:
+                if abs(audio.duration - audio_in_db["duration"]) > 0.5:
                     logger.info(
                         f"Audio {audio_name} has different durations: {audio.duration} vs {audio_in_db['duration']}."
                     )
+                    logger.info(
+                        f"After fixing duration, it would be: {audio_in_db['duration'] + audio.start_offset_trimmed_audio + audio.end_offset_trimmed_audio} vs. {audio.duration}."
+                    )
+                    segments = db.get_segments_by_audio_id(audio_in_db["id"])
+
+                    if isinstance(segments, DataFrame) and not segments.empty:
+                        segments["start_time"] = (
+                            segments["start_time"] + audio.start_offset_trimmed_audio
+                        )
+                        segments["end_time"] = (
+                            segments["end_time"] + audio.start_offset_trimmed_audio
+                        )
+
+                        logger.info(
+                            segments[["text_asr", "start_time", "end_time"]].head(5)
+                        )
 
 
 if __name__ == "__main__":
