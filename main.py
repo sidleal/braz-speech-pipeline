@@ -28,6 +28,9 @@ def export(
     continuous_text: bool = typer.Option(False, help="Export to continuous text"),
     speakers_text: bool = typer.Option(False, help="Export to speakers text"),
     original_audios: bool = typer.Option(False, help="Export original audios"),
+    export_audio_to_formats: List[AudioFormat] = typer.Option(
+        [AudioFormat.WAV, AudioFormat.MP3], help="Export audio to formats"
+    ),
     google_drive_folder_ids: Optional[List[str]] = typer.Option(
         None, help="Google Drive folder IDs"
     ),
@@ -52,6 +55,7 @@ def export(
             output_folder=output_folder,
             db=db,
             export_original_audios=original_audios,
+            export_audio_to_formats=export_audio_to_formats,
             google_drive_folder_ids=google_drive_folder_ids,
             sample_rate=sample_rate,
             filter_format=filter_format,
