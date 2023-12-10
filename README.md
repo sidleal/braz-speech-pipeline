@@ -131,13 +131,11 @@ Use this command to transcribe audio files from specified Google Drive folders.
 | `--corpus-id`               | Unique identifier for the corpus                                      | int       | Yes      | None       |
 | `--folder-ids`              | List of Google Drive folder IDs containing audio files                | List[str] | Yes      | None       |
 | `--output_folder`           | Directory path for saving the output                                  | Path      | No      | "./data/"       |
-| `--storage-output-folder-id`                      | Instance of Database for database operations                          | Google Drive folder ID to save the transcriptions. If none is provided, the transcriptions will be saved in the same folder as the │
-│                                                                            audios.  | No       | None       |
+| `--storage-output-folder-id`                      | Instance of Database for database operations                          | Google Drive folder ID to save the transcriptions. If none is provided, the transcriptions will be saved in the same folder as the                                                                         audios.  | No       | None       |
 | `--format-filter `    | Filter audios by format                        | [wav|mp4|mp3]  | No    | None       |
 | `--save-to-drive`           | Flag to save transcriptions to Google Drive                           | bool      | No       | False      |
 | `--save-to-db`        | Flag to save transcriptions to database                                | bool      | No       | False      |
 | `--transfer-to-server`     | Flag to transfer transcriptions to server                              | bool      | No       | False      |
-| `storage_output_folder_id`| Google Drive folder ID for storing transcriptions                     | str       | No       | None       |
 
 #### Running the command
 
