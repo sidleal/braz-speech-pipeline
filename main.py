@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Literal, Optional, List
+from typing import Optional, List
 
 from src.pipelines.transcribe import transcribe_audios_in_folder
 from src.pipelines.export import export_corpus_dataset
@@ -108,6 +108,7 @@ def transcribe(
                 save_to_drive=save_to_drive,
                 get_db_search_key=get_db_search_key,
             )
+
 
 if __name__ == "__main__":
     app()

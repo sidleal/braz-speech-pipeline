@@ -1,5 +1,5 @@
-# Use an official Python runtime with CUDA support as a parent image
-FROM nvidia/cuda:11.0-base-ubuntu20.04
+# Use an official CUDA runtime image
+FROM wallies/python-cuda:3.10-cuda11.6-runtime
 
 # Set the working directory in the container to /app
 WORKDIR /app
@@ -8,9 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Install any needed packages specified in requirements.txt
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
 
 # Install Poetry
 RUN pip3 install poetry
