@@ -7,6 +7,10 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+# Install ffmpeg
+RUN apt-get update \
+  && apt-get install ffmpeg
+
 # Install Poetry
 RUN pip3 install --upgrade pip \
   && pip3 install poetry
