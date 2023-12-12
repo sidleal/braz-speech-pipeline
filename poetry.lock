@@ -4749,8 +4749,8 @@ dev = ["pytest"]
 [package.source]
 type = "git"
 url = "https://github.com/m-bain/whisperx.git"
-reference = "v3.1.1"
-resolved_reference = "d8a2b4ffc9e33584e453c3d433cedf6f60651350"
+reference = "HEAD"
+resolved_reference = "19ab91c5a6a6525cc56e8a7256cb01153b80432e"
 
 [[package]]
 name = "yarl"
@@ -4873,4 +4873,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "4e60a45e1b53f1cb644b1df790347bb2025b3543d8eba80c137711e8a5395bff"
+content-hash = "aa537f5f835ad978f37a0e29f642292bc881875c661dae4e81c32b17ef491d65"

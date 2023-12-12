@@ -25,7 +25,7 @@ class SegmentWithSpeaker(SingleAlignedSegment):
 class TranscriptionService:
     def __init__(
         self,
-        whisper_model: str = "large-v2",
+        whisper_model: str = "large-v3",
         batch_size: int = 8,
         compute_type: str = "float16",
     ):
@@ -34,15 +34,7 @@ class TranscriptionService:
         )
         logger.info(f"Loading whisper model {whisper_model}")
         self.whisperx_model: FasterWhisperPipeline = whisperx.load_model(
-            whisper_model,
-            self.device,
-            compute_type=compute_type,
-            language="pt",
-            asr_options={
-                "repetition_penalty": 1, 
-                "prompt_reset_on_temperature": 0.5,
-                "no_repeat_ngram_size": 0
-            }
+            whisper_model, self.device, compute_type=compute_type, language="pt"
         )
         self.batch_size: int = batch_size
         self.compute_type: str = compute_type
@@ -75,14 +67,10 @@ class TranscriptionService:
         diarize_model = whisperx.DiarizationPipeline(
             use_auth_token=CONFIG.pyannote.auth_token, device=self.device
         )
-        
-        dict_input = {"waveform": torch.from_numpy(np.array(audio.trimmed_audio)).unsqueeze(0),
-                   "sample_rate": audio.sample_rate,
-                   "channel": 0}
+
         # # add min/max number of speakers if known
         # diarize_segments = diarize_model(audio_file)
-        diarize_segments = diarize_model(dict_input, min_speakers=1, max_speakers=4
-        )
+        diarize_segments = diarize_model(np.array(audio.trimmed_audio), min_speakers=1, max_speakers=4)
 
         result = whisperx.assign_word_speakers(diarize_segments, align_result)
         resulted_segments: List[SegmentWithSpeaker] = result["segments"]
