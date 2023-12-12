@@ -34,7 +34,15 @@ class TranscriptionService:
         )
         logger.info(f"Loading whisper model {whisper_model}")
         self.whisperx_model: FasterWhisperPipeline = whisperx.load_model(
-            whisper_model, self.device, compute_type=compute_type, language="pt"
+            whisper_model,
+            self.device,
+            compute_type=compute_type,
+            language="pt",
+            asr_options={
+                "repetition_penalty": 1, 
+                "prompt_reset_on_temperature": 0.5,
+                "no_repeat_ngram_size": 0
+            }
         )
         self.batch_size: int = batch_size
         self.compute_type: str = compute_type
