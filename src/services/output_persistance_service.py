@@ -1,4 +1,5 @@
 import os
+import concurrent.futures
 import pandas as pd
 from pathlib import Path
 from pydub import AudioSegment
@@ -44,9 +45,12 @@ class OutputPersistanceService:
     ):
         saved_segments = []
         logger.info(f"Persisting data for audio {audio.name} transcription")
-        audio_id_in_db = None
-        
-        for segment in segments:
+
+        if self.db is not None:
+            logger.info(f"Creating audio {audio.name} on database")
+            audio_id_in_db = self.db.add_audio(audio.name, corpus_id, audio.duration)
+
+        def save_segment(segment: Segment) -> Optional[SegmentCreate]:
             try:
                 logger.debug("Saving to files")
                 saved_segment = self._save_transcription_to_file(
@@ -58,11 +62,7 @@ class OutputPersistanceService:
                         f"Erro ao processar segmento {segment.segment_num} in {audio.name}",
                         stack_info=True,
                     )
-                    continue
-
-                if self.db is not None:
-                    logger.debug("Saving to DB")
-                    audio_id_in_db = self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
+                    return None
 
                 if self.file_transfer_client is not None:
                     logger.debug("Transfering to server")
@@ -72,13 +72,18 @@ class OutputPersistanceService:
                             CONFIG.remote.dataset_path, saved_segment.segment_path
                         ),
                     )
+
+                if self.db is not None:
+                    logger.debug("Saving to DB")
+                    self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
+            
                 if self.remote_storage_client is not None:
                     logger.debug("Saving to Google Drive")
                     self._save_transcription_to_remote(
                         remote_storage_folder_id, audio, saved_segment
                     )
 
-                saved_segments.append(saved_segment.dict())
+                return saved_segment
 
             except Exception as e:
                 logger.error(
@@ -86,16 +91,20 @@ class OutputPersistanceService:
                     stack_info=True,
                 )
                 return None
-
         
-            df = pd.DataFrame(saved_segments)
-            df.to_csv(
-                self.output_folder / audio.name / "summary.csv",
-                index=False,
-                encoding="utf-8",
-                sep="|",
-                mode="w",
-            )
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+            for saved_segment in executor.map(save_segment, segments):
+                if saved_segment is not None:
+                    saved_segments.append(saved_segment)
+        
+        df = pd.DataFrame(saved_segments)
+        df.to_csv(
+            self.output_folder / audio.name / "summary.csv",
+            index=False,
+            encoding="utf-8",
+            sep="|",
+            mode="w",
+        )
 
     def _save_transcription_to_file(
         self, audio: Audio, segment: Segment, audio_export_format: str
@@ -152,19 +161,15 @@ class OutputPersistanceService:
             return None
 
     def _save_transcription_to_db(
-        self, corpus_id: int, audio: Audio, segment: SegmentCreate, audio_id_in_db: Optional[int] = None
-    ) -> int:
+        self, corpus_id: int, audio: Audio, segment: SegmentCreate, audio_id_in_db: int
+    ):
         if self.db is None:
             raise Exception(
                 "Database client not provided. Cannot save transcription to database."
             )
 
-        if audio_id_in_db is None:
-            logger.info(f"Creating audio {audio.name} on database")
-            audio_id_in_db = self.db.add_audio(audio.name, corpus_id, audio.duration)
         segment_to_db = SegmentCreateInDB(**segment.dict(), audio_id=audio_id_in_db)
         self.db.add_audio_segment(segment_to_db)
-        return audio_id_in_db
 
     def _save_transcription_to_remote(
         self,
