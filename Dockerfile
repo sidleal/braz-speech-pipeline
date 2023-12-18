@@ -9,15 +9,12 @@ COPY . /app
 
 # Install ffmpeg
 RUN apt-get update \
-  && apt-get install ffmpeg
+  && apt-get install ffmpeg -y
 
 # Install Poetry
-RUN pip3 install --upgrade pip \
-  && pip3 install poetry
+RUN pip3 install pip --upgrade --no-cache \
+  && pip3 install poetry --no-cache
 
 # Install dependencies using Poetry
 RUN poetry config virtualenvs.create false \
   && poetry install
-
-# Run main.py when the container launches
-CMD ["python3", "main.py"]
