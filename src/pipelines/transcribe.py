@@ -98,7 +98,11 @@ def transcribe_audios_in_folder(
             continue
         
         except Exception as e:
-            logger.error(f"Something went wrong when processing audio {audio.name}: {e}")
+            logger.error(
+                f"Something went wrong when processing audio {audio.name}",
+                exc_info=True,
+                stack_info=True
+            )
             continue
         
 
