@@ -1,5 +1,4 @@
 import os
-import concurrent.futures
 import pandas as pd
 from pathlib import Path
 from pydub import AudioSegment
@@ -50,8 +49,9 @@ class OutputPersistanceService:
             logger.info(f"Creating audio {audio.name} on database")
             audio_id_in_db = self.db.add_audio(audio.name, corpus_id, audio.duration)
 
-        def save_segment(segment: Segment) -> Optional[SegmentCreate]:
-            try:
+        try:
+            # Save all segments locally
+            for segment in segments:
                 logger.debug("Saving to files")
                 saved_segment = self._save_transcription_to_file(
                     audio, segment, audio_export_format.value
@@ -62,41 +62,41 @@ class OutputPersistanceService:
                         f"Erro ao processar segmento {segment.segment_num} in {audio.name}",
                         stack_info=True,
                     )
-                    return None
+                else:
+                    saved_segments.append(saved_segment)
 
-                if self.file_transfer_client is not None:
-                    logger.debug("Transfering to server")
-                    self.file_transfer_client.put(
-                        source=saved_segment.segment_path,
-                        target=os.path.join(
-                            CONFIG.remote.dataset_path, saved_segment.segment_path
-                        ),
-                    )
+            # Transfer files to server
+            if self.file_transfer_client is not None:
+                logger.debug("Transfering to server")
+                self.file_transfer_client.put(
+                    source=[saved_segment.segment_path for saved_segment in saved_segments],
+                    target=os.path.join(
+                        CONFIG.remote.dataset_path, os.path.dirname(saved_segment.segment_path),
+                    ),
+                    target_is_folder=True,
+                )
 
-                if self.db is not None:
+            # Save to database
+            if self.db is not None:
+                for saved_segment in saved_segments:
                     logger.debug("Saving to DB")
                     self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
-            
-                if self.remote_storage_client is not None:
+                
+            # Save to remote storage
+            if self.remote_storage_client is not None:
+                for saved_segment in saved_segments:
                     logger.debug("Saving to Google Drive")
                     self._save_transcription_to_remote(
                         remote_storage_folder_id, audio, saved_segment
                     )
 
-                return saved_segment
+        except Exception as e:
+            logger.error(
+                f"Erro ao processar {audio.name}: {e}",
+                stack_info=True,
+            )
+            return
 
-            except Exception as e:
-                logger.error(
-                    f"Erro ao processar segmento {segment.segment_num} in {audio.name}: {e}",
-                    stack_info=True,
-                )
-                return None
-        
-        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-            for saved_segment in executor.map(save_segment, segments):
-                if saved_segment is not None:
-                    saved_segments.append(saved_segment)
-        
         df = pd.DataFrame(saved_segments)
         df.to_csv(
             self.output_folder / audio.name / "summary.csv",

@@ -1,3 +1,4 @@
+from typing import Iterable, Union
 import paramiko
 from scp import SCPClient
 import os
@@ -59,11 +60,15 @@ class FileTransfer:
         # command = f"mkdir -p -v {folder_path}"  # Ignore error if the folder already exists
         self.ssh.exec_command(injected_command)
 
-    def put(self, source: str, target: str, target_is_folder: bool = False, **kwargs):
+    def put(
+        self,
+        source: Union[str, Iterable[str]],
+        target: str,
+        target_is_folder: bool = False,
+        **kwargs
+    ):
         if target_is_folder:
             self.mkdir(target)
-            filename = os.path.basename(source)
-            target = os.path.join(target, filename)
         else:
             target_directory = os.path.dirname(target)
             self.mkdir(target_directory)
@@ -71,10 +76,10 @@ class FileTransfer:
         try:
             self.scp.put(source, target.encode(), **kwargs)
         except Exception as e:
-            logger.error(f"Error transfering file.")
+            logger.error(f"Error transfering files.")
             logger.debug(e)
         else:
-            logger.debug(f"File transfered successfully.")
+            logger.debug(f"Files transfered successfully.")
 
     def read_all_files(self, path):
         command = f"ls {path}"
