@@ -32,7 +32,7 @@ class RemoteMachine(BaseModel):
 class Computation(BaseModel):
     batch_size: int = 8
     compute_type: str = "float16"
-    whisper_model: str = "large-v2"
+    whisper_model: str = "large-v3"
 
 
 class Config(BaseSettings):
