@@ -68,13 +68,17 @@ class OutputPersistanceService:
             # Transfer files to server
             if self.file_transfer_client is not None:
                 logger.debug("Transfering to server")
-                self.file_transfer_client.put(
-                    source=[saved_segment.segment_path for saved_segment in saved_segments],
-                    target=os.path.join(
-                        CONFIG.remote.dataset_path, os.path.dirname(saved_segment.segment_path),
-                    ),
-                    target_is_folder=True,
-                )
+                # The following piece of code relies on the fact that all saved segment are in
+                # the same directory!
+                if saved_segments:
+                    self.file_transfer_client.put(
+                        source=[saved_segment.segment_path for saved_segment in saved_segments],
+                        target=os.path.join(
+                            CONFIG.remote.dataset_path,
+                            os.path.dirname(saved_segments[0].segment_path),
+                        ),
+                        target_is_folder=True,
+                    )
 
             # Save to database
             if self.db is not None:
