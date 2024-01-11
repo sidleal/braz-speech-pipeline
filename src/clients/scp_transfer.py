@@ -27,10 +27,13 @@ class FileTransfer:
             CONFIG.sshtunnel.password,
         )
         transport = self.ssh.get_transport()
+        # Ensure the connection is kept alive for the duration of the transcription
+        transport.set_keepalive(30)
         if transport is None or not transport.is_active():
             raise Exception("SSH connection is not active.")
 
-        self.scp = SCPClient(transport)
+        # Ensure that the channel does not time out while transfering audio segments
+        self.scp = SCPClient(transport, socket_timeout=None)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
