@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from pydub import AudioSegment
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from tqdm import tqdm
 import soundfile as sf
 
@@ -84,8 +84,7 @@ class OutputPersistanceService:
             # Save to database
             if self.db is not None:
                 logger.debug("Saving to DB")
-                for saved_segment in tqdm(saved_segments):
-                    self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
+                self._save_transcriptions_to_db(corpus_id, audio, saved_segments, audio_id_in_db)
                 
             # Save to remote storage
             if self.remote_storage_client is not None:
@@ -165,16 +164,19 @@ class OutputPersistanceService:
             )
             return None
 
-    def _save_transcription_to_db(
-        self, corpus_id: int, audio: Audio, segment: SegmentCreate, audio_id_in_db: int
+    def _save_transcriptions_to_db(
+        self, corpus_id: int, audio: Audio, segments: List[SegmentCreate], audio_id_in_db: int
     ):
         if self.db is None:
             raise Exception(
                 "Database client not provided. Cannot save transcription to database."
             )
 
-        segment_to_db = SegmentCreateInDB(**segment.dict(), audio_id=audio_id_in_db)
-        self.db.add_audio_segment(segment_to_db)
+        segments_to_db = [
+            SegmentCreateInDB(**segment.dict(), audio_id=audio_id_in_db)
+            for segment in segments
+        ]
+        self.db.add_audio_segments(segments_to_db)
 
     def _save_transcription_to_remote(
         self,

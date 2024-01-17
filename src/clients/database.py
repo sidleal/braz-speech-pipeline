@@ -60,7 +60,7 @@ class Database:
 
         return connection
 
-    def _run_query(self, sql_query, params=None):
+    def _run_query(self, sql_query, params=None, many=False):
         """Runs a given SQL query via the global database connection.
 
         :param sql: MySQL query
@@ -71,7 +71,10 @@ class Database:
             return pd.read_sql_query(sql_query, self.sql_connection, params=params)  # type: ignore
         else:
             with self.sql_connection.cursor() as cursor:
-                cursor.execute(sql_query, params)
+                if not many:
+                    cursor.execute(sql_query, params)
+                else:
+                    cursor.executemany(sql_query, params)
                 self.sql_connection.commit()
                 if sql_query.strip().lower().startswith("insert"):
                     return cursor.lastrowid
@@ -91,7 +94,7 @@ class Database:
         audio_id = self._run_query(query, params)
         return audio_id  # type: ignore
 
-    def add_audio_segment(self, segment: SegmentCreateInDB):
+    def add_audio_segments(self, segments: List[SegmentCreateInDB]):
         query = """
             INSERT INTO Dataset 
             (
@@ -106,18 +109,21 @@ class Database:
                 %s, %s, %s, %s, %s
             )
         """
-        params = (
-            segment.segment_path,
-            segment.text_asr,
-            segment.audio_id,
-            segment.segment_num,
-            segment.frames,
-            segment.int_duration,
-            segment.start_time,
-            segment.end_time,
-            segment.speaker,
-        )
-        return self._run_query(query, params)
+        params = [
+            (
+                segment.segment_path,
+                segment.text_asr,
+                segment.audio_id,
+                segment.segment_num,
+                segment.frames,
+                segment.int_duration,
+                segment.start_time,
+                segment.end_time,
+                segment.speaker,
+            ) 
+            for segment in segments
+        ]
+        return self._run_query(query, params, many=True)
 
     def update_audio_duration(self, audio_id, audio_duration):
         query = f"""
