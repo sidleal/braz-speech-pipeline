@@ -57,7 +57,10 @@ def analyze_differences_in_durations(
                     .replace("_sem_cabeçalho", "")
                 )
 
-                audios_with_name = db.get_audios_by_name(get_db_search_key(audio_name))
+                audios_with_name = db.get_audios_by_name(
+                    get_db_search_key(audio_name),
+                    ignore_errors=True
+                )
                 if (
                     isinstance(audios_with_name, DataFrame)
                     and not audios_with_name.empty

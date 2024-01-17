@@ -127,11 +127,13 @@ class Database:
         """
         return self._run_query(query)
 
-    def get_audios_by_name(self, audio_name):
+    def get_audios_by_name(self, audio_name: str, ignore_errors: bool):
+        error_check = "AND (error_flag IS NULL OR error_flag != 1)"
+
         query = f"""
         SELECT *
         FROM Audio
-        WHERE name LIKE '{audio_name}%'
+        WHERE name LIKE '{audio_name}%' {error_check if ignore_errors else ""}
         """
         return self._run_query(query)
 
