@@ -79,10 +79,10 @@ class FileTransfer:
         try:
             self.scp.put(source, target.encode(), **kwargs)
         except Exception as e:
-            logger.error(f"Error transfering files.")
+            logger.error(f"Error transferring files.")
             logger.debug(e)
         else:
-            logger.debug(f"Files transfered successfully.")
+            logger.debug(f"Files transferred successfully.")
 
     def read_all_files(self, path):
         command = f"ls {path}"

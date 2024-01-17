@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 from pydub import AudioSegment
 from typing import Literal, Optional
+from tqdm import tqdm
 import soundfile as sf
 
 from src.clients.database import Database
@@ -67,7 +68,7 @@ class OutputPersistanceService:
 
             # Transfer files to server
             if self.file_transfer_client is not None:
-                logger.debug("Transfering to server")
+                logger.debug("Transferring to server")
                 # The following piece of code relies on the fact that all saved segment are in
                 # the same directory!
                 if saved_segments:
@@ -82,14 +83,14 @@ class OutputPersistanceService:
 
             # Save to database
             if self.db is not None:
-                for saved_segment in saved_segments:
-                    logger.debug("Saving to DB")
+                logger.debug("Saving to DB")
+                for saved_segment in tqdm(saved_segments):
                     self._save_transcription_to_db(corpus_id, audio, saved_segment, audio_id_in_db)
                 
             # Save to remote storage
             if self.remote_storage_client is not None:
-                for saved_segment in saved_segments:
-                    logger.debug("Saving to Google Drive")
+                logger.debug("Saving to Google Drive")
+                for saved_segment in tqdm(saved_segments):
                     self._save_transcription_to_remote(
                         remote_storage_folder_id, audio, saved_segment
                     )
