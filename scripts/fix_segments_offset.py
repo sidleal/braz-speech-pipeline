@@ -59,7 +59,7 @@ def analyze_differences_in_durations(
 
                 audios_with_name = db.get_audios_by_name(
                     get_db_search_key(audio_name),
-                    ignore_errors=True
+                    ignore_errors=False
                 )
                 if (
                     isinstance(audios_with_name, DataFrame)
