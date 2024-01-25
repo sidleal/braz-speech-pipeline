@@ -107,6 +107,3 @@ def transcribe_audios_in_folder(
                 stack_info=True
             )
             continue
-        break
-
-    pass
