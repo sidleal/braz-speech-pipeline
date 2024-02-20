@@ -101,7 +101,7 @@ class OutputPersistanceService:
             )
             return
 
-        df = pd.DataFrame(saved_segments)
+        df = pd.DataFrame(saved_segment.dict() for saved_segment in saved_segments)
         df.to_csv(
             self.output_folder / audio.name / "summary.csv",
             index=False,
