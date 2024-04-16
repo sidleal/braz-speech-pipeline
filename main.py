@@ -27,6 +27,7 @@ def export(
     textgrid: bool = typer.Option(False, help="Export to TextGrid"),
     continuous_text: bool = typer.Option(False, help="Export to continuous text"),
     speakers_text: bool = typer.Option(False, help="Export to speakers text"),
+    speakers_time_text: bool = typer.Option(False, help="Export to speakers text with times [start - end]"),
     original_audios: bool = typer.Option(False, help="Export original audios"),
     export_audio_to_formats: List[AudioFormat] = typer.Option(
         [AudioFormat.WAV, AudioFormat.MP3], help="Export audio to formats"
@@ -46,6 +47,7 @@ def export(
         textgrid = True
         continuous_text = True
         speakers_text = True
+        speakers_time_text = True
         original_audios = True
         json_metadata = True
 
@@ -62,6 +64,7 @@ def export(
             export_concanated_text=continuous_text,
             export_json_metadata=json_metadata,
             export_speakers_text=speakers_text,
+            export_speakers_time_text=speakers_time_text,
             export_text_grid=textgrid,
             export_to_csv=csv,
             debug=debug,

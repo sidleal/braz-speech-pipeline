@@ -91,6 +91,63 @@ class Exporter:
         with open(output_file_path / f"{audio_name}_by_speaker.txt", "w") as file:
             file.write(formatted_text)
 
+
+    def export_speakers_time_text_file(self, audio_name: str, group):
+        # Sort the group by segment_num, if it's not already sorted
+        group = group.sort_values("segment_num")
+
+        # Initialize variables
+        current_speaker = None
+        formatted_text = ""
+        current_speaker_text = []
+        current_speaker_times = []
+
+        for _, row in group.iterrows():
+            speaker_id = row["speaker_id"]
+            text = row["text"]
+            start = row["start_time"]
+            end = row["end_time"]
+
+            # If speaker_id is null, use the current speaker, or default to 0 if it's the first segment
+            speaker_id = (
+                speaker_id
+                if pd.notnull(speaker_id)
+                else (current_speaker if current_speaker else 0)
+            )
+
+            # If the speaker has changed or it's the first segment, append the current speaker's text to formatted_text
+            if current_speaker is not None and current_speaker != speaker_id:
+                formatted_text += f'\nSPEAKER {int(current_speaker)}: \n\n'
+                for i, txt in enumerate(current_speaker_text):
+                    formatted_text += f'[{current_speaker_times[i][0]} - {current_speaker_times[i][1]}] {txt}\n\n'
+
+                current_speaker_text = (
+                    []
+                )  # Reset current_speaker_text for the new speaker
+                current_speaker_times = (
+                    []
+                )  # Reset current_speaker_times for the new speaker
+
+            current_speaker = speaker_id  # Update the current speaker
+            current_speaker_text.append(
+                text
+            )  # Append the text to the current speaker's text
+            current_speaker_times.append(
+                [start, end]
+            )  # Append the start and end to the current speaker's times
+
+        # Append the last speaker's text
+        formatted_text += f'\nSPEAKER {int(current_speaker)}: \n\n'
+        for i, txt in enumerate(current_speaker_text):
+            formatted_text += f'[{current_speaker_times[i][0]} - {current_speaker_times[i][1]}] {txt}\n\n'
+
+        output_file_path = self.output_folder / audio_name
+        output_file_path.mkdir(parents=True, exist_ok=True)
+
+        # Write to file
+        with open(output_file_path / f"{audio_name}_by_speaker_time.txt", "w") as file:
+            file.write(formatted_text)
+
     def export_textgrid_file(self, audio_name: str, group):
         # Create a new TextGrid object
         tg = textgrid.TextGrid(

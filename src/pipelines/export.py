@@ -39,6 +39,7 @@ def export_corpus_dataset(
     export_to_csv: bool = False,
     export_concanated_text: bool = False,
     export_speakers_text: bool = False,
+    export_speakers_time_text: bool = False,
     export_json_metadata: bool = False,
     export_text_grid: bool = False,
 ):
@@ -80,7 +81,7 @@ def export_corpus_dataset(
         logger.info(f"Exporting audios and segments for corpus {corpus_id} to csv.")
         exporter.export_to_csv(corpus_id, audios, segments)
 
-    if export_concanated_text or export_speakers_text or export_text_grid or export_json_metadata or export_original_audios:
+    if export_concanated_text or export_speakers_text or export_speakers_time_text or export_text_grid or export_json_metadata or export_original_audios:
         prepared_audios = audios.rename(
             columns={
                 "id": "audio_id",
@@ -97,6 +98,7 @@ def export_corpus_dataset(
         for audio_id, group in tqdm(grouped):
             # Get the audio_name for this audio_id
             audio_name = group["audio_name"].iloc[0]
+            audio_name = audio_name.replace("/","_")
             logger.info(
                 f" # Working on the export of audio {audio_name}."
             )
@@ -119,6 +121,10 @@ def export_corpus_dataset(
             if export_speakers_text and not check_file_exists(output_folder / audio_name, f"{audio_name}_by_speaker.txt"):
                 logger.info(f"Exporting speakers text file.")
                 exporter.export_speakers_text_file(audio_name, sorted_group)
+
+            if export_speakers_time_text and not check_file_exists(output_folder / audio_name, f"{audio_name}_by_speaker_time.txt"):
+                logger.info(f"Exporting speakers with times text file.")
+                exporter.export_speakers_time_text_file(audio_name, sorted_group)
 
             if export_text_grid and not check_file_exists(output_folder / audio_name, f"{audio_name}.textgrid"):
                 logger.info(f"Exporting text grid file.")
