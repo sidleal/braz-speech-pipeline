@@ -74,6 +74,7 @@ Use this command to export corpus datasets in various formats.
 | `--csv` | Export data to CSV format | bool | False | No |
 | `--continuous-text` | Export concatenated text from audio segments | bool | False | No |
 | `--speakers-text` | Export text files organized by speaker | bool | False | No |
+| `--speakers-time-text` | Export text files organized by speaker with times [start - end] | bool | False | No |
 | `--json-metadata` | Export audio metadata in JSON format | bool | False | No |
 | `--textgrid` | Export data in TextGrid format for use with Praat | bool | False | No |
 | `--all` | Export all data | bool | False | No |
